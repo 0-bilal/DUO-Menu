@@ -32,7 +32,7 @@ const slides = [
     badge: 'مميز',
     badgeColor: 'red',
     price: 23,
-    duration: 946,
+    duration: 8000,
   },
  /** {
     image: 'images/slides/slide3.png',
