@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=1920, height=1200, initial-scale=1.0, user-scalable=no">
   <title>DUO Menu</title>
 
   <!-- ══ PWA ══ -->
@@ -156,34 +156,6 @@
 <script src="slides.js"></script>
 <script src="main.js"></script>
 
-<!-- ══ Auto-Scale: يكبّر الشاشة لتملأ الجهاز ══ -->
-<script>
-  (function () {
-    const DESIGN_W = 1920;
-    const DESIGN_H = 1200;
-
-    function scaleScreen() {
-      const scaleX = window.innerWidth  / DESIGN_W;
-      const scaleY = window.innerHeight / DESIGN_H;
-      const scale  = Math.min(scaleX, scaleY);
-
-      const screen = document.querySelector('.screen');
-      if (!screen) return;
-
-      screen.style.transform       = 'scale(' + scale + ')';
-      screen.style.transformOrigin = 'top left';
-
-      /* توسيط إذا كانت النسبة لا تتطابق تماماً */
-      const offsetX = (window.innerWidth  - DESIGN_W * scale) / 2;
-      const offsetY = (window.innerHeight - DESIGN_H * scale) / 2;
-      screen.style.marginLeft = offsetX + 'px';
-      screen.style.marginTop  = offsetY + 'px';
-    }
-
-    scaleScreen();
-    window.addEventListener('resize', scaleScreen);
-  })();
-</script>
 
 <!-- ══ PWA Service Worker Registration ══ -->
 <script>
