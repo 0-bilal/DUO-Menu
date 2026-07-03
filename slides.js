@@ -34,7 +34,7 @@ const slides = [
     price: 23,
     duration: 8000,
   },
- /** {
+ {
     image: 'images/slides/slide3.png',
     titleAr: 'أضلاع الذرة',
     titleEn: 'CORN RIBS',
@@ -44,7 +44,7 @@ const slides = [
     price: null,
     duration: 7000,
   },
-  {
+ /** {
     image: 'images/slides/slide4.png',
     titleAr: 'حلويات طازجة يومياً',
     titleEn: 'Fresh Daily Desserts',
