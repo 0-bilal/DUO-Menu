@@ -9,6 +9,7 @@
 /* ── Config ── */
 const ITEM_DURATION   = 3500;  // ms per highlight step
 const HIGHLIGHT_DELAY = 80;    // ms to let CSS layout settle before centering
+const PAUSE_DURATION  = 12000; // ms to pause auto-scroll after user interaction
 
 /* ── Helpers ── */
 const $ = id => document.getElementById(id);
@@ -99,10 +100,9 @@ function scrollToSection(catId) {
   const firstIdx = allItemEls.findIndex(el => el.dataset.cat === catId);
   if (firstIdx === -1) return;
 
-  // Redirect auto-scroll: clear current timer, jump highlight to first item of category
-  clearTimeout(autoTimer);
+  // Treat tab click as user interaction → pause auto-scroll
+  pauseAutoScroll();
   highlightItem(firstIdx);
-  autoTimer = setTimeout(stepScroll, ITEM_DURATION);
 }
 
 function highlightActiveTab(catId) {
@@ -179,10 +179,55 @@ function renderAllCategories() {
 }
 
 /* ════════════════════════════════════════════════════════
+   PAUSE / RESUME  (user interaction)
+════════════════════════════════════════════════════════ */
+let isPaused    = false;
+let pauseTimer  = null;
+
+function pauseAutoScroll() {
+  // Reset countdown each time user interacts
+  clearTimeout(pauseTimer);
+  pauseTimer = setTimeout(resumeAutoScroll, PAUSE_DURATION);
+
+  if (isPaused) return; // already paused, just reset timer above
+  isPaused = true;
+  clearTimeout(autoTimer);
+
+  // Show paused indicator in status bar
+  const indicator = document.querySelector('.scroll-item-indicator');
+  if (indicator && !indicator.dataset.origHtml) {
+    indicator.dataset.origHtml = indicator.innerHTML;
+    indicator.innerHTML =
+      `<i class="fa-solid fa-hand-pointer" style="color:var(--red)"></i>
+       <span style="color:var(--white);font-weight:700">تصفح يدوي</span>`;
+  }
+  // Stop timer fill
+  const fill = $('scroll-timer-fill');
+  if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
+}
+
+function resumeAutoScroll() {
+  isPaused = false;
+  clearTimeout(pauseTimer);
+
+  // Restore indicator
+  const indicator = document.querySelector('.scroll-item-indicator');
+  if (indicator && indicator.dataset.origHtml) {
+    indicator.innerHTML = indicator.dataset.origHtml;
+    delete indicator.dataset.origHtml;
+  }
+
+  // Re-highlight current item and resume stepping
+  highlightItem(curIdx);
+  autoTimer = setTimeout(stepScroll, ITEM_DURATION);
+}
+
+/* ════════════════════════════════════════════════════════
    AUTO-SCROLL ENGINE
 ════════════════════════════════════════════════════════ */
-let curIdx    = 0;
-let autoTimer = null;
+let curIdx        = 0;
+let autoTimer     = null;
+let progScroll    = false; // true while centerItem is scrolling programmatically
 
 function highlightItem(idx) {
   // Clamp & store
@@ -294,11 +339,15 @@ function centerItem(el) {
   // Skip if we're already there (same-category transition — no movement needed)
   if (Math.abs(area.scrollTop - clamped) < 6) return;
 
+  progScroll = true;
   area.scrollTo({ top: clamped, behavior: 'smooth' });
+  // Reset flag after animation completes (~600ms)
+  setTimeout(() => { progScroll = false; }, 700);
 }
 
 function stepScroll() {
   clearTimeout(autoTimer);
+  if (isPaused) return; // user is browsing — don't advance
 
   const nextIdx  = (curIdx + 1) % allItemEls.length;
   const nextEl   = allItemEls[nextIdx];
@@ -392,6 +441,28 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAllCategories();
   fixScrollablePadding();   // ensure every heading can reach the top of the area
   renderSlides();
+
+  // ── Detect user interaction on the menu area ──
+  const menuArea = $('menu-items-area');
+  if (menuArea) {
+    // Touch: start of any touch gesture
+    menuArea.addEventListener('touchstart', pauseAutoScroll, { passive: true });
+    // Touch: swiping / scrolling
+    menuArea.addEventListener('touchmove',  pauseAutoScroll, { passive: true });
+    // Mouse wheel / trackpad scroll
+    menuArea.addEventListener('wheel',      pauseAutoScroll, { passive: true });
+    // Programmatic or keyboard scroll — ignore if triggered by centerItem
+    menuArea.addEventListener('scroll', () => {
+      if (!progScroll) pauseAutoScroll();
+    }, { passive: true });
+  }
+
+  // Also pause when tapping category tabs (handled inside scrollToSection)
+  // But intercept touchstart on the tabs row too
+  const tabsRow = $('category-tabs');
+  if (tabsRow) {
+    tabsRow.addEventListener('touchstart', pauseAutoScroll, { passive: true });
+  }
 
   // Start auto-scroll after padding is applied (rAF inside fixScrollablePadding)
   setTimeout(startAutoScroll, 900);
