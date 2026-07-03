@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1200, initial-scale=1.0">
+  <title>DUO Menu</title>
+
+  <!-- ══ PWA ══ -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#be1e2d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DUO Menu">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png">
+  <link rel="icon" type="image/svg+xml" href="icons/logo.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+  <!-- ══ Fonts & Icons ══ -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="screen">
+
+  <!-- ══════════════════════════════════════════
+       RIGHT — MENU PANEL (579px)
+  ══════════════════════════════════════════ -->
+  <div class="menu-panel">
+
+    <!-- Header -->
+    <div class="menu-header">
+      <div class="header-top">
+        <div class="logo-wrap">
+          <img id="logo-img" src="" alt="logo" style="display:none">
+          <div id="logo-placeholder" class="logo-placeholder">
+            <i class="fa-solid fa-burger"></i>
+          </div>
+        </div>
+        <div class="header-text">
+          <div id="rest-name-ar" class="restaurant-name-ar">برجر هاوس</div>
+          <div id="rest-name-en" class="restaurant-name-en">Burger House</div>
+          <div id="rest-tagline"  class="restaurant-tagline">نكهة لا تُنسى في كل قضمة</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="red-strip"></div>
+
+    <!-- Category anchor tabs -->
+    <div id="category-tabs" class="category-tabs">
+      <!-- Rendered by main.js -->
+    </div>
+
+    <!-- All items in one scrollable area -->
+    <div id="menu-items-area" class="menu-items-area">
+      <!-- Rendered by main.js -->
+    </div>
+
+    <!-- Status bar -->
+    <div class="scroll-status-bar">
+      <div class="scroll-item-indicator">
+        <i class="fa-solid fa-circle-play"></i>
+        <span>عرض</span>
+        <strong id="scroll-cur">1</strong>
+        <span>من</span>
+        <strong id="scroll-total">1</strong>
+      </div>
+      <div class="scroll-timer-track">
+        <div id="scroll-timer-fill" class="scroll-timer-fill"></div>
+      </div>
+      <div id="scroll-cat-label" class="scroll-cat-label">—</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="menu-footer">
+      <div class="tax-note">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="tax-note-text">الأسعار شاملة ضريبة القيمة المضافة 15%</span>
+      </div>
+      <div id="wifi-section" class="wifi-info" style="display:none">
+        <i class="fa-solid fa-wifi"></i>
+        <span id="wifi-name" class="wifi-name">—</span>
+      </div>
+    </div>
+
+  </div><!-- /menu-panel -->
+
+  <div class="panel-divider"></div>
+
+  <!-- ══════════════════════════════════════════
+       LEFT — SLIDE PANEL (620px)
+  ══════════════════════════════════════════ -->
+  <div class="slide-panel">
+
+    <!-- Slideshow -->
+    <div id="slides-wrapper" class="slides-wrapper">
+      <!-- Rendered by main.js -->
+    </div>
+
+    <!-- Floating info widget (overlays the slideshow) -->
+    <div class="fab-widget" id="fab-widget">
+
+      <!-- Social row — always visible -->
+      <div class="fab-social">
+        <div class="fab-social-item">
+          <i class="fa-brands fa-tiktok"></i>
+          <span id="fab-tiktok-name">@burgerhouse</span>
+        </div>
+        <div class="fab-social-divider"></div>
+        <div class="fab-social-item">
+          <i class="fa-brands fa-instagram"></i>
+          <span id="fab-ig-name">@burgerhouse</span>
+        </div>
+      </div>
+
+      <!-- Toggleable rows -->
+      <div class="fab-actions">
+        <button class="fab-action-btn" id="fab-phone-btn" onclick="fabToggle('phone')">
+          <i class="fa-solid fa-phone"></i>
+          <span class="fab-action-label" id="fab-phone-label">رقم الهاتف</span>
+          <span class="fab-action-value" id="fab-phone-value"></span>
+          <i class="fa-solid fa-chevron-left fab-chevron" id="fab-phone-chev"></i>
+        </button>
+        <div class="fab-actions-sep"></div>
+        <button class="fab-action-btn" id="fab-hours-btn" onclick="fabToggle('hours')">
+          <i class="fa-regular fa-clock"></i>
+          <span class="fab-action-label" id="fab-hours-label">أوقات العمل</span>
+          <span class="fab-action-value" id="fab-hours-value"></span>
+          <i class="fa-solid fa-chevron-left fab-chevron" id="fab-hours-chev"></i>
+        </button>
+      </div>
+
+    </div><!-- /fab-widget -->
+
+    <!-- Progress bar -->
+    <div class="slide-progress">
+      <div id="progress-fill" class="slide-progress-fill"></div>
+    </div>
+
+    <!-- Dots -->
+    <div id="slide-dots" class="slide-dots"></div>
+
+  </div><!-- /slide-panel -->
+
+</div><!-- /screen -->
+
+<script src="products.js"></script>
+<script src="slides.js"></script>
+<script src="main.js"></script>
+
+<!-- ══ PWA Service Worker Registration ══ -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then(reg => {
+          console.log('[PWA] Service Worker registered:', reg.scope);
+
+          // Notify user when a new version is available
+          reg.addEventListener('updatefound', () => {
+            const worker = reg.installing;
+            worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] New version available — reload to update.');
+                // For a kiosk/signage display, auto-reload after a delay
+                setTimeout(() => {
+                  worker.postMessage('SKIP_WAITING');
+                  window.location.reload();
+                }, 5000);
+              }
+            });
+          });
+        })
+        .catch(err => console.warn('[PWA] SW registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>

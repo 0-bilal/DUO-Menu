@@ -1,0 +1,155 @@
+/**
+ * products.js — بيانات مطعم البرجر
+ * عدّل هذا الملف لإضافة منتجاتك الحقيقية
+ */
+
+const restaurantInfo = {
+  nameAr:       'ديو برجر',
+  nameEn:       'DUO Burger',
+  taglineAr:    'نكهة لا تُنسى في كل قضمة',
+  logo:         'images/logo.ico',
+  phone:        '----',
+  workingHours: '12:00 م – 03:00 ص',
+  workingDays:  'طوال أيام الأسبوع',
+  instagram:    '@duo_brger1',
+  tiktok:       '@theduoburger',
+  address:      'مكه - حي الشوقية',
+  taxNote:      'الأسعار شاملة ضريبة القيمة المضافة 15%',
+};
+
+const menuCategories = [
+
+  /* ──────────────────────────────────────
+     الأطباق الرئيسية
+  ────────────────────────────────────── */
+  {
+    id: 'main',
+    nameAr: 'الأطباق الرئيسية',
+    nameEn: 'Main Dishes',
+    icon: 'fa-burger',
+    items: [
+      {
+        nameAr:        'دبل ديو برجر',
+        nameEn:        'Double DUO Burder',
+        image:         'images/products/duo-burger.jpg',
+        price:         23,
+        calories:      630,
+        descriptionAr: 'برجر اسماش دبل 140 جران من اللحم المشوي، مع صوص، يعطي لذعة حموضة',
+      },
+      {
+        nameAr:        'دبل اوريقا برجر',
+        nameEn:        'Double Origa Burger',
+        image:         'images/products/origa-burger.jpg',
+        price:         23,
+        calories:      946,
+        descriptionAr: 'برجر اسماش دبل 140 جران من اللحم المشوي، معصوص يعطي اللحمة بعضا من الحلاوة',
+      },
+      {
+        nameAr:        'أضافة شريحة لحم',
+        nameEn:        'Add a ٍٍٍٍٍٍslice Of Meat',
+        image:         'images/products/add-meat.jpg',
+        price:         6,
+        calories:      120,        
+        descriptionAr: 'كملها بإضافة شريحة لحم على البرجر ليصبح تريبل، أو. كواردير تصل شريحة اللحم الواحدة 70 غم',
+      },
+      {
+        nameAr:        'وجبة برجر',
+        nameEn:        'Burger Meal',
+        image:         'images/products/burger-meal.jpg',
+        price:         33,
+        
+        descriptionAr: 'وجبة من البرجر، ديو، أو أوريغا مع البطاطس المقلية المبهرة والمشروب',
+      },
+      
+    ],
+  },
+
+  /* ──────────────────────────────────────
+     الأطباق الجانبية
+  ────────────────────────────────────── */
+  {
+    id: 'sides',
+    nameAr: 'الأطباق الجانبية',
+    nameEn: 'Side Dishes',
+    icon: 'fa-bowl-food',
+    items: [
+      {
+        nameAr:        'بطاطس مبهرة',
+        nameEn:        'Seasoned Potatoes',
+        image:         'images/products/fries.jpg',
+        price:         7,
+        calories:      311,
+        descriptionAr: 'بطاطس مقلية ذهبية ببهارات ديو',
+      },
+      {
+        nameAr:        'أضلاع الذرة',
+        nameEn:        'Corn Ribs',
+        image:         'images/products/corn-ribs.jpg',
+        price:         14,
+        calories:      200,
+        descriptionAr: '6 قطع من أضلاع، الدرة الذهبية المقلية. معصوص الكريمة والبهارات ديو',
+      },
+      {
+        nameAr:        'تكساس فرايز',
+        nameEn:        'Spicy Wedges',
+        image:         'images/products/spicy-wedges.jpg',
+        price:         19,
+        descriptionAr: 'البطاطس المقلية الذهبية معصوص ديو أو أوريغا من اختيارك مع اللحم. وصوص الجبنة وقطع الهليبينو',
+      },
+    ],
+  },
+
+  /* ──────────────────────────────────────
+     المشروبات
+  ────────────────────────────────────── */
+  {
+    id: 'drinks',
+    nameAr: 'المشروبات',
+    nameEn: 'Drinks',
+    icon: 'fa-glass-water',
+    items: [
+      {
+        nameAr:        'مشروب غازي',
+        nameEn:        'SDoft Drink',
+        image:         'images/products/Cola.jpg',
+        price:         3,
+         descriptionAr: 'كولا، كولا دايت، كولا زيرو،  سبرايت',
+      },
+      {
+        nameAr:        'مياه',
+        nameEn:        'Water',
+        image:         'images/products/water.jpg',
+        price:         1,
+      },
+    ],
+  },
+
+  /* ──────────────────────────────────────
+     الصوصات
+  ────────────────────────────────────── */
+  {
+    id: 'sauces',
+    nameAr: 'الصوصات',
+    nameEn: 'Sauces',
+    icon: 'fa-bottle-droplet',
+    items: [
+      {
+        nameAr:        'صوص ديو',
+        nameEn:        'DUO Sauce',
+        image:         'images/products/duo-sauce.jpg',
+        price:         3,
+        calories:      105,
+        descriptionAr: 'صوص ديو لخليط سري، في نكهة. الليمون',
+      },
+      {
+        nameAr:        'صوص اوريقا',
+        nameEn:        'Origa Sauce',
+        image:         'images/products/origa-sauce.jpg',
+        price:         3,
+        calories:      105,
+        descriptionAr: 'صوص ارويقا في نكهة حالية',
+      },
+    ],
+  },
+
+];
