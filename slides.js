@@ -26,12 +26,12 @@ const slides = [
   },
   {
     image: 'images/slides/slide2.png',
-    titleAr: 'دبل اوريقا برجر',
-    titleEn: 'Special Offer',
-    descriptionAr: 'استمتع ببرجر دبل مع صوص أوريقا',
-    badge: 'مميز',
+    titleAr: 'لحومــــنا سعوديـــة',
+    titleEn: 'Prescott Angus Fakher',
+    descriptionAr: 'بريسكت انجوس فاخر',
+    badge: 'محلي',
     badgeColor: 'red',
-    price: 23,
+    price: null,
     duration: 5000,
   },
  {
