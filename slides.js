@@ -25,7 +25,7 @@ const slides = [
     price: 19,
   },
   {
-    image: 'images/slides/slide2.png',
+    image: 'images/slides/slide6.png',
     titleAr: 'لحومــــنا سعوديـــة',
     titleEn: 'Prescott Angus Fakher',
     descriptionAr: 'بريسكت انجوس فاخر',
