@@ -54,14 +54,14 @@ const slides = [
     price: null,
     duration: 10000,
   },
- /** {
+  {
     image: 'images/slides/slide5.png',
-    titleAr: 'مشروبات طازجة',
-    titleEn: 'Fresh Beverages',
-    descriptionAr: 'عصائر وموهيتو ومشروبات باردة متنوعة',
-    badge: 'جديد',
+    titleAr: 'الخيار الذكي..',
+    titleEn: 'The smart choice...',
+    descriptionAr: '',
+    badge: 'مميزة',
     badgeColor: 'green',
-    price: null,
-    duration: 5000,
-   }, */
+    price: 33,
+    duration: 8000,
+   },
  ];
