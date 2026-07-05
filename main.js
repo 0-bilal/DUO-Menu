@@ -116,9 +116,10 @@ function renderAllCategories() {
     // Items
     cat.items.forEach((item, i) => {
       const card = document.createElement('div');
-      card.className   = 'menu-item';
+      card.className   = 'menu-item' + (item.isMeal ? ' menu-item--meal' : '');
       card.dataset.cat = cat.id;
 
+      const badge = _getBadge(cat.id, item.nameAr);
       card.innerHTML = `
         <span class="item-num">0${i + 1}</span>
         <div class="item-img-wrap">
@@ -131,6 +132,7 @@ function renderAllCategories() {
           </div>
         </div>
         <div class="item-info">
+          ${badge ? _badgeHTML(badge) : ''}
           <div class="item-name-ar">${item.nameAr}</div>
           <div class="item-name-en">${item.nameEn}</div>
           ${item.descriptionAr
@@ -445,11 +447,29 @@ function _fillOverlayContent(item, idx) {
   $('product-overlay-desc').textContent    = item.descriptionAr || '';
   $('product-overlay-desc').style.display  = item.descriptionAr ? 'block' : 'none';
 
+  // تتبع المشاهدة + الشارة في الـ overlay
+  const _ovCat = menuCategories.find(c => c.items.includes(item));
+  if (_ovCat) {
+    _trackView(_ovCat.id, item.nameAr);
+    // شارة الـ overlay
+    let obEl = $('product-overlay-badge');
+    if (!obEl) {
+      obEl = document.createElement('div');
+      obEl.id = 'product-overlay-badge';
+      obEl.className = 'product-overlay-badge-wrap';
+      const infoEl = document.querySelector('.product-overlay-info');
+      if (infoEl) infoEl.prepend(obEl);
+    }
+    const ob = _getBadge(_ovCat.id, item.nameAr);
+    obEl.innerHTML  = ob ? _badgeHTML(ob) : '';
+    obEl.style.display = ob ? 'block' : 'none';
+  }
+
   // الأنواع / الخيارات
   const variantsEl = $('product-overlay-variants');
   if (variantsEl) {
     if (item.variants?.length) {
-      const catId = menuCategories.find(c => c.items.includes(item))?.id || '';
+      const catId = _ovCat?.id || '';
       variantsEl.innerHTML = item.variants
         .filter(v => !_devHiddenVariants.has(_devItemKey(catId, item.nameAr) + '||' + v))
         .map(v => `<span class="overlay-variant-tag" data-vkey="${_devItemKey(catId, item.nameAr)}||${v}">${v}</span>`)
@@ -810,12 +830,39 @@ const SS_SLIDES    = 'duo_hidden_slides';
 const SS_DISCOUNT  = 'duo_discount_hidden';
 const SS_PHONE     = 'duo_phone_hidden';
 const SS_VARIANTS  = 'duo_hidden_variants';
+const LS_BADGES    = 'duo_badges';
+const LS_STATS_PFX = 'duo_stats_';
 
 let _devHiddenItems    = new Set();
 let _devHiddenSlides   = new Set();
 let _devHiddenVariants = new Set();
 let _devDiscountHidden = false;
 let _devPhoneHidden    = false;
+let _devBadges         = {};   // { "catId||nameAr": "popular"|"new"|"limited"|"" }
+
+/* ── إحصائيات المشاهدة ── */
+function _todayKey()  { return LS_STATS_PFX + new Date().toISOString().slice(0, 10); }
+function _getStats()  { try { return JSON.parse(localStorage.getItem(_todayKey()) || '{}'); } catch { return {}; } }
+function _trackView(catId, nameAr) {
+  const k = _todayKey(), stats = _getStats();
+  stats[_devItemKey(catId, nameAr)] = (stats[_devItemKey(catId, nameAr)] || 0) + 1;
+  localStorage.setItem(k, JSON.stringify(stats));
+}
+
+/* ── الشارات ── */
+const BADGE_META = {
+  popular: { label: 'الأكثر طلباً', icon: 'fa-fire',        cls: 'badge--popular' },
+  new:     { label: 'جديد',         icon: 'fa-star',         cls: 'badge--new'     },
+  limited: { label: 'محدود',        icon: 'fa-clock',        cls: 'badge--limited' },
+};
+function _loadBadges()  { try { _devBadges = JSON.parse(localStorage.getItem(LS_BADGES) || '{}'); } catch { _devBadges = {}; } }
+function _saveBadges()  { localStorage.setItem(LS_BADGES, JSON.stringify(_devBadges)); }
+function _getBadge(catId, nameAr) { return _devBadges[_devItemKey(catId, nameAr)] || ''; }
+function _badgeHTML(badge) {
+  if (!badge || !BADGE_META[badge]) return '';
+  const m = BADGE_META[badge];
+  return `<span class="item-badge ${m.cls}"><i class="fa-solid ${m.icon}"></i> ${m.label}</span>`;
+}
 
 function _devItemKey(catId, nameAr) { return catId + '||' + nameAr; }
 
@@ -827,6 +874,7 @@ function _devLoadSettings() {
     _devHiddenVariants = new Set(JSON.parse(sessionStorage.getItem(SS_VARIANTS) || '[]'));
     _devDiscountHidden = sessionStorage.getItem(SS_DISCOUNT) === 'true';
     _devPhoneHidden    = sessionStorage.getItem(SS_PHONE)    === 'true';
+    _loadBadges();
   } catch(e) {
     _devHiddenItems = new Set(); _devHiddenSlides = new Set();
     _devHiddenVariants = new Set(); _devDiscountHidden = false;
@@ -995,12 +1043,13 @@ function _renderAdminPanel() {
   });
   html += `</div>`;
 
-  /* المنتجات */
+  /* المنتجات + الشارات */
   menuCategories.forEach(cat => {
     html += `<div class="dp-section">
       <div class="dp-section-title"><i class="fa-solid ${cat.icon}"></i> ${cat.nameAr}</div>`;
     cat.items.forEach(item => {
-      const key = _devItemKey(cat.id, item.nameAr);
+      const key   = _devItemKey(cat.id, item.nameAr);
+      const badge = _getBadge(cat.id, item.nameAr);
       html += `<label class="dp-row">
         <span class="dp-row-label">
           ${item.nameAr}
@@ -1011,7 +1060,18 @@ function _renderAdminPanel() {
                  ${!_devHiddenItems.has(key) ? 'checked' : ''}>
           <span class="dp-slider"></span>
         </span>
-      </label>`;
+      </label>
+      <div class="dp-row dp-badge-row">
+        <span class="dp-row-label dp-badge-label"><i class="fa-solid fa-tag"></i> شارة</span>
+        <div class="dp-badge-btns">
+          ${['','popular','new','limited'].map(b => `
+            <button class="dp-badge-btn ${b ? 'dp-badge-btn--'+b : 'dp-badge-btn--none'} ${badge===b?'active':''}"
+                    data-type="badge" data-key="${key}" data-badge="${b}"
+                    onclick="devSetBadge('${key}','${b}',this)">
+              ${b ? BADGE_META[b].label : 'لا شيء'}
+            </button>`).join('')}
+        </div>
+      </div>`;
       // الأنواع الفرعية
       if (item.variants?.length) {
         item.variants.forEach(v => {
@@ -1031,6 +1091,27 @@ function _renderAdminPanel() {
     });
     html += `</div>`;
   });
+
+  /* إحصائيات اليوم */
+  const stats = _getStats();
+  const statsEntries = Object.entries(stats).sort((a,b) => b[1]-a[1]);
+  if (statsEntries.length) {
+    html += `<div class="dp-section">
+      <div class="dp-section-title"><i class="fa-solid fa-chart-bar"></i> إحصائيات اليوم</div>`;
+    statsEntries.forEach(([k, count]) => {
+      // k = "catId||nameAr" — نبحث عن اسم المنتج
+      const nameAr = k.split('||')[1] || k;
+      const pct    = Math.round((count / statsEntries[0][1]) * 100);
+      html += `<div class="dp-stat-row">
+        <span class="dp-stat-name">${nameAr}</span>
+        <div class="dp-stat-bar-wrap">
+          <div class="dp-stat-bar" style="width:${pct}%"></div>
+        </div>
+        <span class="dp-stat-count">${count}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
 
   body.innerHTML = html;
 
@@ -1084,12 +1165,38 @@ function saveDevSettings() {
 }
 window.saveDevSettings = saveDevSettings;
 
+/* تغيير شارة منتج فورياً من لوحة التحكم */
+function devSetBadge(key, badge, btn) {
+  _devBadges[key] = badge;
+  _saveBadges();
+  // تحديث حالة الأزرار
+  btn.closest('.dp-badge-btns').querySelectorAll('.dp-badge-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.badge === badge);
+  });
+  // تطبيق فوري على البطاقات
+  document.querySelectorAll('.menu-item').forEach(card => {
+    const nameEl = card.querySelector('.item-name-ar');
+    const catId  = card.dataset.cat;
+    if (!nameEl) return;
+    const k = _devItemKey(catId, nameEl.textContent.trim());
+    if (k !== key) return;
+    const infoEl  = card.querySelector('.item-info');
+    if (!infoEl) return;
+    let badgeEl   = infoEl.querySelector('.item-badge');
+    const newHtml = _badgeHTML(_devBadges[key]);
+    if (badgeEl) { if (newHtml) badgeEl.outerHTML = newHtml; else badgeEl.remove(); }
+    else if (newHtml) infoEl.insertAdjacentHTML('afterbegin', newHtml);
+  });
+}
+window.devSetBadge = devSetBadge;
+
 /* ════════════════════════════════════════════════════════
    INIT
 ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   renderRestaurantInfo();
   renderCategoryTabs();
+  _loadBadges();          // يجب قبل renderAllCategories حتى تظهر الشارات فور التحميل
   renderAllCategories();
   fixScrollablePadding();   // ensure every heading can reach the top of the area
   renderSlides();

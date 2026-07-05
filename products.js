@@ -59,7 +59,7 @@ const menuCategories = [
         nameEn:        'Burger Meal',
         image:         'images/products/burger-meal.jpg',
         price:         33,
-        
+        isMeal:        true,
         descriptionAr: 'وجبة من البرجر، ديو، أو أوريغا مع البطاطس المقلية المبهرة والمشروب',
       },
       
