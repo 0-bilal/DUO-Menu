@@ -93,7 +93,7 @@ html,body {
 
 .slide-content {
   position:absolute; bottom:0; left:0; right:0;
-  padding:32px 48px 140px;   /* bottom: room for FAB widget */
+  padding:32px 48px 48px;
   z-index:2;
 }
 .slide-badge {
@@ -129,14 +129,6 @@ html,body {
 }
 .slide-price-tag .currency { font-size:18px; font-weight:400; opacity:.82; }
 
-/* Progress bar */
-.slide-progress { height:3px; background:rgba(255,255,255,.07); flex-shrink:0; }
-.slide-progress-fill {
-  height:100%; width:0%;
-  background:linear-gradient(90deg,var(--red-dk),var(--red));
-  transition:width linear;
-}
-
 /* Dots */
 .slide-dots {
   display:flex; justify-content:center; align-items:center;
@@ -150,79 +142,30 @@ html,body {
 .dot.active { width:34px; background:var(--red); }
 
 /* ════════════════════════════════════════════════════════
-   FLOATING INFO WIDGET  (overlays slide panel)
+   SOCIAL BARS  (يسار لوحة الترويج — مكدّسة)
 ════════════════════════════════════════════════════════ */
-.fab-widget {
-  position:absolute;
-  bottom:38px;            /* sits above progress + dots (~30px) */
-  left:16px; right:16px;
-  z-index:10;
-  background:rgba(6,0,0,.84);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border:1px solid var(--red-edge);
-  border-radius:var(--rl);
-  overflow:hidden;
-  box-shadow:0 8px 36px rgba(0,0,0,.7), 0 0 0 1px rgba(190,30,45,.12);
+.social-bars {
+  position:absolute; left:0; bottom:60px;
+  z-index:9;
+  display:flex; flex-direction:column; gap:10px;
 }
 
-/* Social row — always visible */
-.fab-social {
-  display:flex; align-items:center;
-  padding:16px 30px;
-  background:linear-gradient(90deg, rgba(190,30,45,.18) 0%, rgba(190,30,45,.06) 100%);
-  border-bottom:1px solid var(--red-edge);
-  gap:0;
-}
-.fab-social-item {
-  display:flex; align-items:center; gap:12px;
-  flex:1; min-width:0;
-  font-size:20px; font-weight:700; color:var(--white);
-}
-.fab-social-item i { font-size:24px; flex-shrink:0; }
-.fab-social-item .fa-tiktok    { color:#fff; }
-.fab-social-item .fa-instagram { color:#e1306c; }
-.fab-social-item span {
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+.social-bar {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 30px 14px 22px;
+  background:rgba(4,0,1,.82);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border-radius:0 100px 100px 0;
+  border:1px solid rgba(255,255,255,.10); border-left:none;
+  box-shadow:4px 0 18px rgba(0,0,0,.45);
+  transition:transform .25s ease, box-shadow .25s ease;
 }
 
-.fab-social-divider {
-  width:1px; height:36px;
-  background:var(--red-edge); margin:0 26px; flex-shrink:0;
-}
+.social-bar i       { font-size:24px; flex-shrink:0; }
+.social-bar span    { font-size:20px; font-weight:800; color:#fff; white-space:nowrap; }
 
-/* Action buttons row */
-.fab-actions {
-  display:flex; align-items:stretch;
-}
-.fab-actions-sep {
-  width:1px; background:var(--red-edge); flex-shrink:0;
-}
-.fab-action-btn {
-  flex:1; display:flex; align-items:center; gap:14px;
-  padding:16px 26px;
-  color:var(--lite);
-  transition:background .25s;
-  text-align:right;
-}
-.fab-action-btn:active,
-.fab-action-btn.open { background:var(--red-soft); }
-.fab-action-btn > i:first-child { color:var(--red); font-size:22px; flex-shrink:0; }
-.fab-action-label { font-size:18px; font-weight:600; color:var(--lite); flex:1; }
-.fab-action-value {
-  font-family:var(--en); font-size:18px; font-weight:600;
-  color:var(--white); direction:ltr;
-  max-width:0; overflow:hidden; opacity:0;
-  transition:max-width .35s ease, opacity .35s ease;
-  white-space:nowrap;
-}
-.fab-action-value.visible { max-width:320px; opacity:1; }
-.fab-chevron {
-  font-size:15px; color:var(--gray);
-  transition:transform .3s;
-  flex-shrink:0;
-}
-.fab-action-btn.open .fab-chevron { transform:rotate(90deg); color:var(--red); }
+.social-bar-tiktok .fa-tiktok       { color:#ffffff; }
+.social-bar-instagram .fa-instagram { color:#e1306c; }
 
 /* ════════════════════════════════════════════════════════
    DIVIDER
@@ -275,6 +218,22 @@ html,body {
   color:var(--gray); letter-spacing:3px; text-transform:uppercase; margin-top:4px;
 }
 .restaurant-tagline { font-size:18px; font-weight:500; color:var(--red-lt); margin-top:5px; }
+
+/* رقم الهاتف — يسار الهيدر مقابل اللوجو */
+.header-phone {
+  margin-right:auto;           /* يدفعه لأقصى اليسار في RTL */
+  display:flex; align-items:center; gap:10px;
+  padding:10px 20px;
+  background:var(--red-soft);
+  border:1px solid var(--red-edge);
+  border-radius:var(--rp);
+  flex-shrink:0;
+}
+.header-phone i    { color:var(--red); font-size:18px; }
+.header-phone span {
+  font-family:var(--en); font-size:20px; font-weight:700;
+  color:var(--white); direction:ltr; letter-spacing:.5px;
+}
 
 .red-strip {
   height:3px;
@@ -487,6 +446,21 @@ html,body {
 .wifi-info { display:flex; align-items:center; gap:8px; font-size:16px; color:var(--gray); }
 .wifi-info i { color:#4a9eff; }
 .wifi-name { color:var(--white); font-weight:600; }
+
+/* ── QB Credit ── */
+.qb-credit {
+  display:flex; align-items:center; gap:7px;
+  margin-right:auto; /* يدفعه لأقصى اليسار في RTL */
+  opacity:.55;
+  transition:opacity .25s;
+}
+.qb-credit:hover { opacity:.85; }
+.qb-brand {
+  font-family:var(--en); font-size:13px; font-weight:800;
+  color:var(--red-lt); letter-spacing:1.5px;
+}
+.qb-sep  { color:var(--gray); font-size:11px; }
+.qb-text { font-size:13px; font-weight:500; color:var(--gray); }
 
 /* ════════════════════════════════════════════════════════
    PRODUCT DETAIL OVERLAY

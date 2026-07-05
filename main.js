@@ -40,41 +40,14 @@ function renderRestaurantInfo() {
     else wifiSec.style.display = 'none';
   }
 
-  // FAB social
+  // حسابات التواصل الاجتماعي
   setText('fab-ig-name',     restaurantInfo.instagram || '');
   setText('fab-tiktok-name', restaurantInfo.tiktok    || '');
 
-  // FAB data (stored for toggle)
-  $('fab-phone-value').dataset.val = restaurantInfo.phone        || '';
-  $('fab-hours-value').dataset.val =
-    `${restaurantInfo.workingDays}  •  ${restaurantInfo.workingHours}`;
+  // رقم الهاتف في هيدر المنيو
+  setText('fab-phone-value', restaurantInfo.phone || '');
 }
 
-/* ── FAB toggle ── */
-const fabState = { phone: false, hours: false };
-
-function fabToggle(key) {
-  fabState[key] = !fabState[key];
-
-  const valEl   = $(`fab-${key}-value`);
-  const labelEl = $(`fab-${key}-label`);
-  const chevEl  = $(`fab-${key}-chev`);
-  const btn     = $(`fab-${key}-btn`);
-
-  if (fabState[key]) {
-    valEl.textContent = valEl.dataset.val;
-    valEl.classList.add('visible');
-    labelEl.style.display = 'none';
-    chevEl  && (chevEl.style.transform = 'rotate(90deg)');
-    btn     && btn.classList.add('open');
-  } else {
-    valEl.classList.remove('visible');
-    labelEl.style.display = '';
-    chevEl  && (chevEl.style.transform = '');
-    btn     && btn.classList.remove('open');
-  }
-}
-window.fabToggle = fabToggle; // expose for inline onclick
 
 /* ════════════════════════════════════════════════════════
    CATEGORY TABS  →  scroll anchors

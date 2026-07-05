@@ -8,7 +8,7 @@ const restaurantInfo = {
   nameEn:       'DUO Burger',
   taglineAr:    'نكهة لا تُنسى في كل قضمة',
   logo:         'images/logo.ico',
-  phone:        '----',
+  phone:        '..قريبا',
   workingHours: '12:00 م – 03:00 ص',
   workingDays:  'طوال أيام الأسبوع',
   instagram:    '@duo_brger1',
@@ -34,7 +34,7 @@ const menuCategories = [
         image:         'images/products/duo-burger.jpg',
         price:         23,
         calories:      630,
-        descriptionAr: 'برجر اسماش دبل 140 جران من اللحم المشوي، مع صوص، يعطي لذعة حموضة',
+        descriptionAr: 'برجر اسماش دبل 140 غرام من اللحم المشوي، مع صوص، يعطي لذعة حموضة',
       },
       {
         nameAr:        'دبل اوريقا برجر',
@@ -42,7 +42,7 @@ const menuCategories = [
         image:         'images/products/origa-burger.jpg',
         price:         23,
         calories:      946,
-        descriptionAr: 'برجر اسماش دبل 140 جران من اللحم المشوي، معصوص يعطي اللحمة بعضا من الحلاوة',
+        descriptionAr: 'برجر اسماش دبل 140 غرام من اللحم المشوي، معصوص يعطي اللحمة بعضا من الحلاوة',
       },
       {
         nameAr:        'أضافة شريحة لحم',
@@ -110,7 +110,7 @@ const menuCategories = [
     items: [
       {
         nameAr:        'مشروب غازي',
-        nameEn:        'SDoft Drink',
+        nameEn:        'Soft Drink',
         image:         '',
         price:         3,
          descriptionAr: 'كولا، كولا دايت، كولا زيرو،  سبرايت',

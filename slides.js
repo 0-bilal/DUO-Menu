@@ -16,13 +16,13 @@
 
 const slides = [
   {
-    image: 'images/slides/slide1.jpg',
+    image: 'images/slides/slide1.png',
     titleAr: 'طبق اليوم',
     titleEn: "Today's Special",
-    descriptionAr: 'تكساس فرايز البطاطس المقلية الذهبية مع اللحم، والصوص والجبنة والهلبين',
+    descriptionAr: 'البطاطس المقلية الذهبية مع اللحم، والصوص والجبنة والهلبين',
     badge: 'جديد',
     badgeColor: 'gold',
-    price: 19,
+    price: null,
   },
   {
     image: 'images/slides/slide2.png',
@@ -32,7 +32,7 @@ const slides = [
     badge: 'محلي',
     badgeColor: 'green',
     price: null,
-    duration: 5000,
+    duration: 7000,
   },
  {
     image: 'images/slides/slide3.png',
@@ -48,7 +48,7 @@ const slides = [
     image: 'images/slides/slide4.png',
     titleAr: 'من تختار ؟',
     titleEn: 'Who do you choose?',
-    descriptionAr: 'التحدي بين الطعمين',
+    descriptionAr: 'المنافسة على اشدها جربهم وقرر بنفسك!',
     badge: '',
     badgeColor: 'red',
     price: null,

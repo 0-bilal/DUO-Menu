@@ -49,6 +49,11 @@
           <div id="rest-name-en" class="restaurant-name-en">Burger House</div>
           <div id="rest-tagline"  class="restaurant-tagline">نكهة لا تُنسى في كل قضمة</div>
         </div>
+        <!-- رقم الهاتف — مقابل اللوجو على يسار الهيدر -->
+        <div class="header-phone" id="header-phone-row">
+          <i class="fa-solid fa-phone"></i>
+          <span id="fab-phone-value">----</span>
+        </div>
       </div>
     </div>
 
@@ -88,6 +93,11 @@
       <div id="wifi-section" class="wifi-info" style="display:none">
         <i class="fa-solid fa-wifi"></i>
         <span id="wifi-name" class="wifi-name">—</span>
+      </div>
+      <div class="qb-credit">
+        <span class="qb-brand">QB</span>
+        <span class="qb-sep">|</span>
+        <span class="qb-text">تطوير بلال الخواجة</span>
       </div>
     </div>
 
@@ -147,43 +157,16 @@
     </div>
 
     <!-- Floating info widget (overlays the slideshow) -->
-    <div class="fab-widget" id="fab-widget">
-
-      <!-- Social row — always visible -->
-      <div class="fab-social">
-        <div class="fab-social-item">
-          <i class="fa-brands fa-tiktok"></i>
-          <span id="fab-tiktok-name">@burgerhouse</span>
-        </div>
-        <div class="fab-social-divider"></div>
-        <div class="fab-social-item">
-          <i class="fa-brands fa-instagram"></i>
-          <span id="fab-ig-name">@burgerhouse</span>
-        </div>
+    <!-- حسابات التواصل — شرائط مكدّسة على يسار اللوحة -->
+    <div class="social-bars">
+      <div class="social-bar social-bar-tiktok">
+        <i class="fa-brands fa-tiktok"></i>
+        <span id="fab-tiktok-name">@theduoburgere</span>
       </div>
-
-      <!-- Toggleable rows -->
-      <div class="fab-actions">
-        <button class="fab-action-btn" id="fab-phone-btn" onclick="fabToggle('phone')">
-          <i class="fa-solid fa-phone"></i>
-          <span class="fab-action-label" id="fab-phone-label">رقم الهاتف</span>
-          <span class="fab-action-value" id="fab-phone-value"></span>
-          <i class="fa-solid fa-chevron-left fab-chevron" id="fab-phone-chev"></i>
-        </button>
-        <div class="fab-actions-sep"></div>
-        <button class="fab-action-btn" id="fab-hours-btn" onclick="fabToggle('hours')">
-          <i class="fa-regular fa-clock"></i>
-          <span class="fab-action-label" id="fab-hours-label">أوقات العمل</span>
-          <span class="fab-action-value" id="fab-hours-value"></span>
-          <i class="fa-solid fa-chevron-left fab-chevron" id="fab-hours-chev"></i>
-        </button>
+      <div class="social-bar social-bar-instagram">
+        <i class="fa-brands fa-instagram"></i>
+        <span id="fab-ig-name">@duo_brger1</span>
       </div>
-
-    </div><!-- /fab-widget -->
-
-    <!-- Progress bar -->
-    <div class="slide-progress">
-      <div id="progress-fill" class="slide-progress-fill"></div>
     </div>
 
     <!-- Dots -->
