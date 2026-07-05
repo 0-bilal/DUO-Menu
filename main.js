@@ -379,24 +379,77 @@ function startAutoScroll() {
 let productOverlayTimer    = null;
 let productOverlayItemIdx  = -1;
 let overlayChanging        = false;
-const PRODUCT_OVERLAY_DURATION = 8000;   // ms — إغلاق تلقائي
-const OVERLAY_CHANGE_DURATION  = 280;    // ms — مدة تلاشي المحتوى قبل التبديل
-const OVERLAY_CLOSE_DURATION   = 430;    // ms — مدة انتقال الإغلاق
+let _overlayHasImage       = false;   // هل الـ overlay يعرض صورة حالياً؟
+let _imgCrossfadeTimer     = null;
+const PRODUCT_OVERLAY_DURATION = 8000;
+const OVERLAY_CHANGE_DURATION  = 260;   // ms — تلاشي النص قبل التبديل
+const OVERLAY_CLOSE_DURATION   = 430;
+const CROSSFADE_DURATION       = 520;   // ms — مدة التبديل بين الصورتين
 
-/* ── تعبئة بيانات المنتج دون أي تأثير ── */
+/* ── Crossfade بين صورتين دون إظهار الخلفية ── */
+function _crossfadeOverlayImage(newSrc) {
+  const img1  = $('product-overlay-img');
+  const img2  = $('product-overlay-img2');
+  const imgPh = $('product-overlay-img-ph');
+
+  if (!newSrc) {
+    img1.style.display = 'none';
+    img2.style.display = 'none';
+    imgPh.style.display = 'flex';
+    _overlayHasImage = false;
+    return;
+  }
+
+  imgPh.style.display = 'none';
+
+  if (!_overlayHasImage) {
+    // فتح أول مرة — تعيين مباشر بدون crossfade
+    img1.src           = newSrc;
+    img1.style.display = 'block';
+    img1.style.opacity = '1';
+    img2.style.display = 'none';
+    img2.style.opacity = '0';
+    _overlayHasImage   = true;
+    return;
+  }
+
+  // التبديل بين منتجين — crossfade: img2 تتلاشى فوق img1 ثم تصبح هي img1
+  clearTimeout(_imgCrossfadeTimer);
+
+  img2.src = newSrc;
+  img2.style.display     = 'block';
+  img2.style.transition  = 'none';
+  img2.style.opacity     = '0';
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    img2.style.transition = `opacity ${CROSSFADE_DURATION}ms ease`;
+    img2.style.opacity    = '1';
+  }));
+
+  _imgCrossfadeTimer = setTimeout(() => {
+    img1.src           = newSrc;
+    img1.style.display = 'block';
+    img1.style.opacity = '1';
+    img2.style.transition = 'none';
+    img2.style.opacity    = '0';
+    setTimeout(() => { img2.style.display = 'none'; }, 50);
+  }, CROSSFADE_DURATION + 30);
+}
+
+/* ── تعبئة بيانات المنتج (نصوص + صورة) ── */
 function _fillOverlayContent(item, idx) {
   productOverlayItemIdx = idx;
 
-  const imgEl     = $('product-overlay-img');
-  const imgPh     = $('product-overlay-img-ph');
   const priceWrap = $('product-overlay-price-wrap');
   const calEl     = $('product-overlay-cal');
 
+  // النصوص
   $('product-overlay-name-ar').textContent = item.nameAr        || '';
   $('product-overlay-name-en').textContent = item.nameEn        || '';
   $('product-overlay-desc').textContent    = item.descriptionAr || '';
   $('product-overlay-desc').style.display  = item.descriptionAr ? 'block' : 'none';
 
+  // السعرات
   if (item.calories) {
     $('product-overlay-cal-num').textContent = item.calories;
     calEl.style.display = 'inline-flex';
@@ -404,15 +457,10 @@ function _fillOverlayContent(item, idx) {
     calEl.style.display = 'none';
   }
 
-  if (item.image) {
-    imgEl.src           = item.image;
-    imgEl.style.display = 'block';
-    imgPh.style.display = 'none';
-  } else {
-    imgEl.style.display = 'none';
-    imgPh.style.display = 'flex';
-  }
+  // الصورة — crossfade سلس
+  _crossfadeOverlayImage(item.image || '');
 
+  // السعر
   if (item.price != null) {
     $('product-overlay-price-num').textContent = item.price;
     priceWrap.style.display = 'inline-flex';
@@ -454,7 +502,9 @@ function showProductOverlay(item, idx) {
 /* ── إغلاق الـ overlay والعودة للتلقائي ── */
 function hideProductOverlay() {
   clearTimeout(productOverlayTimer);
-  overlayChanging = false;
+  clearTimeout(_imgCrossfadeTimer);
+  overlayChanging    = false;
+  _overlayHasImage   = false;   // إعادة تعيين لفتح سلس في المرة القادمة
 
   // إلغاء تحديد المنتج
   if (productOverlayItemIdx >= 0) {
