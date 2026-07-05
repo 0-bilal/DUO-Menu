@@ -19,9 +19,10 @@ const setText = (id, v) => { const e=$(id); if(e) e.textContent=v; };
    RESTAURANT INFO
 ════════════════════════════════════════════════════════ */
 function renderRestaurantInfo() {
-  setText('rest-name-ar', restaurantInfo.nameAr);
-  setText('rest-name-en', restaurantInfo.nameEn);
-  setText('rest-tagline',  restaurantInfo.taglineAr);
+  setText('rest-name-ar',    restaurantInfo.nameAr);
+  setText('rest-name-en',    restaurantInfo.nameEn);
+  setText('rest-tagline',    restaurantInfo.taglineAr);
+  setText('review-rest-name', restaurantInfo.nameAr);
 
   // Logo
   const logoImg = $('logo-img'), logoEl = $('logo-placeholder');
@@ -46,6 +47,12 @@ function renderRestaurantInfo() {
 
   // رقم الهاتف في هيدر المنيو
   setText('fab-phone-value', restaurantInfo.phone || '');
+
+  // إخفاء زر الخصم إذا لم يكن هناك رابط Google Maps
+  if (!restaurantInfo.googleMapsUrl || restaurantInfo.googleMapsUrl.includes('YOUR_LINK')) {
+    const discountBtn = document.querySelector('.header-discount-btn');
+    if (discountBtn) discountBtn.style.display = 'none';
+  }
 }
 
 
@@ -128,6 +135,10 @@ function renderAllCategories() {
           <div class="item-name-en">${item.nameEn}</div>
           ${item.descriptionAr
             ? `<div class="item-desc">${item.descriptionAr}</div>` : ''}
+          ${item.variants?.length
+            ? `<div class="item-variants">
+                 ${item.variants.map(v => `<span class="item-variant-tag">${v}</span>`).join('')}
+               </div>` : ''}
           <div class="item-meta">
             ${item.calories
               ? `<span class="cal-badge">
@@ -422,6 +433,20 @@ function _fillOverlayContent(item, idx) {
   $('product-overlay-desc').textContent    = item.descriptionAr || '';
   $('product-overlay-desc').style.display  = item.descriptionAr ? 'block' : 'none';
 
+  // الأنواع / الخيارات
+  const variantsEl = $('product-overlay-variants');
+  if (variantsEl) {
+    if (item.variants?.length) {
+      variantsEl.innerHTML = item.variants
+        .map(v => `<span class="overlay-variant-tag">${v}</span>`)
+        .join('');
+      variantsEl.style.display = 'flex';
+    } else {
+      variantsEl.innerHTML = '';
+      variantsEl.style.display = 'none';
+    }
+  }
+
   // السعرات
   if (item.calories) {
     $('product-overlay-cal-num').textContent = item.calories;
@@ -497,6 +522,84 @@ function hideProductOverlay() {
   }, OVERLAY_CLOSE_DURATION);
 }
 window.hideProductOverlay = hideProductOverlay;
+
+/* ════════════════════════════════════════════════════════
+   REVIEW / DISCOUNT OVERLAY
+════════════════════════════════════════════════════════ */
+const REVIEW_OVERLAY_DURATION = 16000;   // ms — يُغلق تلقائياً
+let   _reviewTimer = null;
+
+function showReviewOverlay() {
+  const overlay = $('review-overlay');
+  if (!overlay) return;
+
+  // إغلاق product overlay إن كان مفتوحاً
+  const productOverlay = $('product-overlay');
+  if (productOverlay?.classList.contains('active')) hideProductOverlay();
+
+  // تعيين صورة QR — إظهار مربع البديل أولاً ثم تحميل الصورة
+  const qrImg      = $('review-qr-img');
+  const qrFallback = $('review-qr-fallback');
+  if (qrImg) {
+    if (restaurantInfo.googleMapsQr) {
+      // إخفاء البديل وإظهار الصورة
+      if (qrFallback) qrFallback.style.display = 'none';
+      qrImg.style.display = 'block';
+      qrImg.src = restaurantInfo.googleMapsQr;
+    } else {
+      // لا يوجد QR — أظهر البديل
+      qrImg.style.display = 'none';
+      if (qrFallback) qrFallback.style.display = 'flex';
+    }
+  }
+
+  // إيقاف عداد سابق
+  clearTimeout(_reviewTimer);
+
+  // إظهار
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    overlay.classList.remove('closing');
+    overlay.classList.add('active');
+  }));
+
+  // شريط العداد
+  _startReviewTimer();
+
+  // إغلاق تلقائي
+  _reviewTimer = setTimeout(hideReviewOverlay, REVIEW_OVERLAY_DURATION);
+
+  // إيقاف التمرير التلقائي أثناء العرض
+  pauseAutoScroll();
+}
+
+function hideReviewOverlay() {
+  clearTimeout(_reviewTimer);
+  const overlay = $('review-overlay');
+  if (!overlay) return;
+
+  overlay.classList.remove('active');
+  overlay.classList.add('closing');
+
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    overlay.classList.remove('closing');
+    resumeAutoScroll();
+  }, 450);
+}
+window.hideReviewOverlay = hideReviewOverlay;
+window.showReviewOverlay  = showReviewOverlay;
+
+function _startReviewTimer() {
+  const fill = $('review-timer-fill');
+  if (!fill) return;
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.transition = `width ${REVIEW_OVERLAY_DURATION}ms linear`;
+    fill.style.width = '0%';
+  }));
+}
 
 /* ════════════════════════════════════════════════════════
    SLIDESHOW

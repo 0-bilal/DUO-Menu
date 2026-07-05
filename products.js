@@ -11,10 +11,12 @@ const restaurantInfo = {
   phone:        '..قريبا',
   workingHours: '12:00 م – 03:00 ص',
   workingDays:  'طوال أيام الأسبوع',
-  instagram:    '@duo_brger1',
-  tiktok:       '@theduoburger',
+  instagram:    'duo_brger1@',
+  tiktok:       'theduoburger@',
   address:      'مكه - حي الشوقية',
   taxNote:      'الأسعار شاملة ضريبة القيمة المضافة 15%',
+  googleMapsUrl: 'https://maps.app.goo.gl//ديو+برجر+DUO+BURGER%E2%80%AD/@21.377399,39.769425,16.83z/data=!4m6!3m5!1s0x15c21b003ee4d6c3:0xfae4e901ae19f8e0!8m2!3d21.3781865!4d39.768244!16s%2Fg%2F11zc3dx62w?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D',   // ← ضع رابط صفحة تقييم المطعم
+  googleMapsQr:  'images/review-qr.png',                     // ← صورة QR Code (اختياري)
 };
 
 const menuCategories = [
@@ -109,11 +111,11 @@ const menuCategories = [
     icon: 'fa-glass-water',
     items: [
       {
-        nameAr:        'مشروب غازي',
+        nameAr:        'مشروبات غازية',
         nameEn:        'Soft Drink',
         image:         '',
         price:         3,
-         descriptionAr: 'كولا، كولا دايت، كولا زيرو،  سبرايت',
+        variants:      ['كولا', 'كولا دايت', 'كولا زيرو', 'سبرايت'],
       },
       {
         nameAr:        'مياه',

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="er" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=2000, height=1200, initial-scale=1.0, user-scalable=no">
@@ -49,10 +49,17 @@
           <div id="rest-name-en" class="restaurant-name-en">Burger House</div>
           <div id="rest-tagline"  class="restaurant-tagline">نكهة لا تُنسى في كل قضمة</div>
         </div>
-        <!-- رقم الهاتف — مقابل اللوجو على يسار الهيدر -->
-        <div class="header-phone" id="header-phone-row">
-          <i class="fa-solid fa-phone"></i>
-          <span id="fab-phone-value">----</span>
+        <!-- رقم الهاتف + زر الخصم — يسار الهيدر -->
+        <div class="header-actions">
+          <button class="header-discount-btn" onclick="showReviewOverlay()">
+            <i class="fa-solid fa-tags"></i>
+            <span class="hdb-pct">10%</span>
+            <span class="hdb-label">خصم</span>
+          </button>
+          <div class="header-phone" id="header-phone-row">
+            <i class="fa-solid fa-phone"></i>
+            <span id="fab-phone-value">----</span>
+          </div>
         </div>
       </div>
     </div>
@@ -145,6 +152,8 @@
 
         <div id="product-overlay-name-ar" class="product-overlay-name-ar"></div>
         <div id="product-overlay-name-en" class="product-overlay-name-en"></div>
+        <!-- الأنواع / الخيارات (مثلاً: كولا، كولا دايت، كولا زيرو) -->
+        <div id="product-overlay-variants" class="product-overlay-variants" style="display:none"></div>
         <div id="product-overlay-desc" class="product-overlay-desc"></div>
 
         <!-- السعر -->
@@ -155,6 +164,79 @@
 
       </div>
     </div>
+
+    <!-- ══ Review / Discount Overlay ══ -->
+    <div id="review-overlay" class="review-overlay">
+
+      <button class="review-close" onclick="hideReviewOverlay()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- خلفية ضبابية بتأثير ضوء -->
+      <div class="review-glow"></div>
+
+      <!-- الجزء العلوي: الأيقونة والعنوان -->
+      <div class="review-top">
+        <div class="review-gmaps-icon">
+          <i class="fa-solid fa-map-location-dot"></i>
+        </div>
+        <div class="review-headline-ar">قيّم تجربتك في <span id="review-rest-name">DUO Burger</span></div>
+        <div class="review-stars">
+          <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+        </div>
+      </div>
+
+      <!-- الخصم المُميز -->
+      <div class="review-discount-block">
+        <span class="review-discount-label-top">واحصل على خصم</span>
+        <span class="review-discount-pct">10%</span>
+        <span class="review-discount-label-bot">في زيارتك القادمة</span>
+      </div>
+
+      <div class="review-divider"></div>
+
+      <!-- القسم السفلي: عمودان -->
+      <div class="review-bottom-row">
+
+        <!-- الخطوات — يمين -->
+        <div class="review-steps">
+          <div class="review-step">
+            <span class="review-step-num">1</span>
+            <span class="review-step-text">قيّم المطعم بـ 5 نجوم على Google Maps</span>
+          </div>
+          <div class="review-step">
+            <span class="review-step-num">2</span>
+            <span class="review-step-text">أرِ الموظف التقييم عند طلبك القادم</span>
+          </div>
+          <div class="review-step">
+            <span class="review-step-num">3</span>
+            <span class="review-step-text">استمتع بخصم 10% على طلبك القادم!</span>
+          </div>
+        </div>
+
+        <!-- QR — يسار -->
+        <div class="review-qr-area">
+          <div class="review-qr-box">
+            <img id="review-qr-img" src="" alt="QR Code" style="display:none"
+                 onerror="this.style.display='none';var f=document.getElementById('review-qr-fallback');if(f)f.style.display='flex'">
+            <div id="review-qr-fallback" class="review-qr-fallback">
+              <i class="fa-brands fa-google"></i>
+              <span>أضف صورة<br>QR هنا</span>
+            </div>
+          </div>
+          <div class="review-qr-label">امسح الكود بجوالك</div>
+        </div>
+
+      </div><!-- /review-bottom-row -->
+
+      <!-- شريط العداد التلقائي -->
+      <div class="review-timer-bar">
+        <div id="review-timer-fill" class="review-timer-fill"></div>
+      </div>
+
+    </div><!-- /review-overlay -->
 
     <!-- Floating info widget (overlays the slideshow) -->
     <!-- حسابات التواصل — شرائط مكدّسة على يسار اللوحة -->
