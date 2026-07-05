@@ -338,13 +338,20 @@ function centerItem(el) {
 
 function stepScroll() {
   clearTimeout(autoTimer);
-  if (isPaused) return; // user is browsing — don't advance
+  if (isPaused) return;
 
-  const nextIdx  = (curIdx + 1) % allItemEls.length;
-  const nextEl   = allItemEls[nextIdx];
-  const curEl    = allItemEls[curIdx];
+  // تخطّى المنتجات المخفية
+  let nextIdx = (curIdx + 1) % allItemEls.length;
+  let attempts = 0;
+  while (allItemEls[nextIdx]?.style.display === 'none' && attempts < allItemEls.length) {
+    nextIdx = (nextIdx + 1) % allItemEls.length;
+    attempts++;
+  }
+  if (attempts === allItemEls.length) return; // كل المنتجات مخفية
 
-  // Detect category change — give extra pause so the transition is felt
+  const nextEl = allItemEls[nextIdx];
+  const curEl  = allItemEls[curIdx];
+
   const catChanged = nextEl && curEl && nextEl.dataset.cat !== curEl.dataset.cat;
   const delay      = catChanged ? ITEM_DURATION + 800 : ITEM_DURATION;
 
@@ -353,7 +360,12 @@ function stepScroll() {
 }
 
 function startAutoScroll() {
-  highlightItem(0);
+  // ابدأ من أول منتج مرئي
+  let startIdx = 0;
+  while (startIdx < allItemEls.length && allItemEls[startIdx]?.style.display === 'none') {
+    startIdx++;
+  }
+  highlightItem(startIdx % (allItemEls.length || 1));
   autoTimer = setTimeout(stepScroll, ITEM_DURATION);
 }
 
@@ -644,9 +656,17 @@ function renderSlides() {
   scheduleSlide();
 }
 
-function goToSlide(idx) {
-  document.querySelectorAll('.slide').forEach((s,i) => s.classList.toggle('active', i===idx));
-  document.querySelectorAll('.dot').forEach((d,i)  => d.classList.toggle('active', i===idx));
+function goToSlide(idx, _attempt) {
+  _attempt = _attempt || 0;
+  const slideEls = document.querySelectorAll('.slide');
+  // تخطّى الشرائح المخفية
+  if (_attempt < slides.length && slideEls[idx]?.dataset.devHidden === 'true') {
+    return goToSlide((idx + 1) % slides.length, _attempt + 1);
+  }
+  if (_attempt === slides.length) return; // كل الشرائح مخفية
+
+  slideEls.forEach((s,i) => s.classList.toggle('active', i===idx));
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===idx));
   curSlide = idx;
   clearTimeout(slideTimer);
   fillSlideProgress();
@@ -668,7 +688,9 @@ function fillSlideProgress() {
 }
 
 /* ════════════════════════════════════════════════════════
-   HIDDEN: الضغط 3× على اللوجو → مسح الكاش + تحديث إجباري
+   HIDDEN LOGO TAPS:
+     3× → مسح الكاش (بعد 1.2 ثانية بدون متابعة)
+     5× → لوحة تحكم المطور
 ════════════════════════════════════════════════════════ */
 function setupLogoSecretTap() {
   const logoWrap = $('logo-wrap');
@@ -683,24 +705,30 @@ function setupLogoSecretTap() {
     clearTimeout(tapTimer);
     _showUpdateToast(tapCount);
 
-    if (tapCount >= 3) {
+    if (tapCount >= 5) {
       tapCount = 0;
-      _forceUpdateApp();
+      _hideUpdateToast();
+      showDevPasswordModal();
       return;
     }
-    tapTimer = setTimeout(() => { tapCount = 0; _hideUpdateToast(); }, 2000);
+
+    tapTimer = setTimeout(() => {
+      if (tapCount === 3) {
+        _forceUpdateApp();   // ٣ نقرات + انتهاء المهلة → مسح الكاش
+      }
+      tapCount = 0;
+      _hideUpdateToast();
+    }, 1200);
   }
 
-  // touchend — أسرع وأكثر موثوقية على شاشات اللمس
   logoWrap.addEventListener('touchend', e => {
-    e.preventDefault();          // يمنع الـ click المزدوج بعده
+    e.preventDefault();
     lastTouchEnd = Date.now();
     onTap();
   }, { passive: false });
 
-  // click كبديل (ماوس / متصفح سطح مكتب)
   logoWrap.addEventListener('click', () => {
-    if (Date.now() - lastTouchEnd < 400) return; // تجنب التكرار بعد touchend
+    if (Date.now() - lastTouchEnd < 400) return;
     onTap();
   });
 }
@@ -730,17 +758,19 @@ function _showUpdateToast(count) {
 
   clearTimeout(toast._hide);
 
-  const dots = ['○ ○ ○', '◉ ○ ○', '◉ ◉ ○', '◉ ◉ ◉'][count] || '◉ ◉ ◉';
+  const dotStates = ['○○○○○','◉○○○○','◉◉○○○','◉◉◉○○','◉◉◉◉○','◉◉◉◉◉'];
+  const dots = dotStates[Math.min(count, 5)] || '◉◉◉◉◉';
 
-  if (count < 3) {
+  if (count < 5) {
+    const isThree = count === 3;
     toast.innerHTML =
-      `<span style="color:var(--red,#be1e2d);letter-spacing:8px">${dots}</span>`;
+      `<span style="color:${isThree ? '#f5c200' : 'var(--red,#be1e2d)'};letter-spacing:10px">${dots}</span>`;
     toast.style.opacity = '1';
     toast._hide = setTimeout(_hideUpdateToast, 1800);
   } else {
     toast.innerHTML =
-      `<i class="fa-solid fa-arrows-rotate" style="color:#be1e2d;margin-left:10px"></i>` +
-      `جاري تحديث التطبيق…`;
+      `<i class="fa-solid fa-gear" style="color:#f5c200;margin-left:10px"></i>` +
+      `فتح لوحة التحكم…`;
     toast.style.opacity = '1';
   }
 }
@@ -768,6 +798,194 @@ async function _forceUpdateApp() {
   // 3. إعادة تحميل إجبارية بعد لحظة لتظهر رسالة التحديث
   setTimeout(() => window.location.reload(true), 900);
 }
+
+/* ════════════════════════════════════════════════════════
+   DEV ADMIN PANEL
+════════════════════════════════════════════════════════ */
+const DEV_PASSWORD = '812100';
+const SS_ITEMS     = 'duo_hidden_items';
+const SS_SLIDES    = 'duo_hidden_slides';
+const SS_DISCOUNT  = 'duo_discount_hidden';
+
+let _devHiddenItems    = new Set();
+let _devHiddenSlides   = new Set();
+let _devDiscountHidden = false;
+
+function _devItemKey(catId, nameAr) { return catId + '||' + nameAr; }
+
+/* تحميل الإعدادات من sessionStorage */
+function _devLoadSettings() {
+  try {
+    _devHiddenItems    = new Set(JSON.parse(sessionStorage.getItem(SS_ITEMS)  || '[]'));
+    _devHiddenSlides   = new Set(JSON.parse(sessionStorage.getItem(SS_SLIDES) || '[]').map(String));
+    _devDiscountHidden = sessionStorage.getItem(SS_DISCOUNT) === 'true';
+  } catch(e) {
+    _devHiddenItems = new Set(); _devHiddenSlides = new Set(); _devDiscountHidden = false;
+  }
+}
+
+/* تطبيق الإعدادات على الـ DOM */
+function applyDevSettings() {
+  // المنتجات
+  allItemEls.forEach(el => {
+    const nameEl = el.querySelector('.item-name-ar');
+    const key    = _devItemKey(el.dataset.cat, nameEl?.textContent || '');
+    el.style.display = _devHiddenItems.has(key) ? 'none' : '';
+  });
+
+  // الشرائح
+  document.querySelectorAll('.slide').forEach((el, i) => {
+    if (_devHiddenSlides.has(String(i))) el.dataset.devHidden = 'true';
+    else delete el.dataset.devHidden;
+  });
+  // انتقل للشريحة التالية إذا كانت الحالية مخفية
+  const slideEls = document.querySelectorAll('.slide');
+  if (slideEls[curSlide]?.dataset.devHidden === 'true') {
+    goToSlide((curSlide + 1) % slides.length);
+  }
+
+  // زر الخصم
+  const discBtn = document.querySelector('.header-discount-btn');
+  if (discBtn) discBtn.style.display = _devDiscountHidden ? 'none' : '';
+
+  // عداد المنتجات
+  const visCount = allItemEls.filter(el => el.style.display !== 'none').length;
+  setText('scroll-total', String(visCount || allItemEls.length));
+}
+
+/* نافذة كلمة السر */
+function showDevPasswordModal() {
+  const modal = $('dev-pwd-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const inp = $('dev-pwd-input');
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
+  const err = $('dev-pwd-error');
+  if (err) err.style.display = 'none';
+}
+function closeDevModal() {
+  const m = $('dev-pwd-modal'); if (m) m.style.display = 'none';
+}
+function checkDevPassword() {
+  const inp = $('dev-pwd-input');
+  if (!inp) return;
+  if (inp.value === DEV_PASSWORD) {
+    closeDevModal();
+    showAdminPanel();
+  } else {
+    const err = $('dev-pwd-error');
+    if (err) err.style.display = 'flex';
+    inp.value = ''; inp.focus();
+  }
+}
+window.showDevPasswordModal = showDevPasswordModal;
+window.closeDevModal        = closeDevModal;
+window.checkDevPassword     = checkDevPassword;
+
+/* بناء وعرض لوحة التحكم */
+function showAdminPanel() {
+  const panel = $('dev-panel'); if (!panel) return;
+  _renderAdminPanel();
+  panel.style.display = 'flex';
+}
+function closeAdminPanel() {
+  const p = $('dev-panel'); if (p) p.style.display = 'none';
+}
+window.closeAdminPanel = closeAdminPanel;
+
+function _renderAdminPanel() {
+  const body = $('dev-panel-body'); if (!body) return;
+  let html = '';
+
+  /* زر الخصم */
+  html += `<div class="dp-section">
+    <div class="dp-section-title"><i class="fa-solid fa-tags"></i> زر الخصم</div>
+    <label class="dp-row">
+      <span class="dp-row-label">إظهار زر خصم 10%</span>
+      <span class="dp-toggle">
+        <input type="checkbox" id="dev-toggle-discount" ${!_devDiscountHidden ? 'checked' : ''}>
+        <span class="dp-slider"></span>
+      </span>
+    </label>
+  </div>`;
+
+  /* الشرائح */
+  html += `<div class="dp-section">
+    <div class="dp-section-title"><i class="fa-solid fa-images"></i> الشرائح الترويجية</div>`;
+  slides.forEach((sl, i) => {
+    html += `<label class="dp-row">
+      <span class="dp-row-label">${sl.titleAr || 'شريحة ' + (i+1)}</span>
+      <span class="dp-toggle">
+        <input type="checkbox" data-type="slide" data-idx="${i}"
+               ${!_devHiddenSlides.has(String(i)) ? 'checked' : ''}>
+        <span class="dp-slider"></span>
+      </span>
+    </label>`;
+  });
+  html += `</div>`;
+
+  /* المنتجات */
+  menuCategories.forEach(cat => {
+    html += `<div class="dp-section">
+      <div class="dp-section-title"><i class="fa-solid ${cat.icon}"></i> ${cat.nameAr}</div>`;
+    cat.items.forEach(item => {
+      const key = _devItemKey(cat.id, item.nameAr);
+      html += `<label class="dp-row">
+        <span class="dp-row-label">
+          ${item.nameAr}
+          ${item.nameEn ? `<small>${item.nameEn}</small>` : ''}
+        </span>
+        <span class="dp-toggle">
+          <input type="checkbox" data-type="item" data-key="${key}"
+                 ${!_devHiddenItems.has(key) ? 'checked' : ''}>
+          <span class="dp-slider"></span>
+        </span>
+      </label>`;
+    });
+    html += `</div>`;
+  });
+
+  body.innerHTML = html;
+
+  // إعادة الفوتر لحالته الطبيعية
+  const footer = $('dp-footer');
+  if (footer) footer.innerHTML =
+    `<button class="dev-btn-save" onclick="saveDevSettings()">
+       <i class="fa-solid fa-floppy-disk"></i> حفظ التغييرات
+     </button>`;
+}
+
+/* حفظ الإعدادات */
+function saveDevSettings() {
+  const dc = $('dev-toggle-discount');
+  if (dc) _devDiscountHidden = !dc.checked;
+
+  _devHiddenSlides = new Set();
+  document.querySelectorAll('[data-type="slide"]').forEach(inp => {
+    if (!inp.checked) _devHiddenSlides.add(inp.dataset.idx);
+  });
+
+  _devHiddenItems = new Set();
+  document.querySelectorAll('[data-type="item"]').forEach(inp => {
+    if (!inp.checked) _devHiddenItems.add(inp.dataset.key);
+  });
+
+  sessionStorage.setItem(SS_ITEMS,    JSON.stringify([..._devHiddenItems]));
+  sessionStorage.setItem(SS_SLIDES,   JSON.stringify([..._devHiddenSlides]));
+  sessionStorage.setItem(SS_DISCOUNT, String(_devDiscountHidden));
+
+  applyDevSettings();
+
+  const footer = $('dp-footer');
+  if (footer) {
+    footer.innerHTML =
+      `<span style="color:#22c55e;font-size:24px;font-weight:700">
+         <i class="fa-solid fa-circle-check"></i> تم الحفظ بنجاح
+       </span>`;
+  }
+  setTimeout(closeAdminPanel, 1000);
+}
+window.saveDevSettings = saveDevSettings;
 
 /* ════════════════════════════════════════════════════════
    INIT
@@ -826,9 +1044,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
   }
 
+  // ── تحميل إعدادات المطور من الجلسة ──
+  _devLoadSettings();
+  applyDevSettings();
+
   // Start auto-scroll after padding is applied (rAF inside fixScrollablePadding)
   setTimeout(startAutoScroll, 900);
 
-  // سر اللوجو: 3 ضغطات → تحديث إجباري
+  // سر اللوجو: 3 ضغطات → تحديث، 5 ضغطات → لوحة التحكم
   setupLogoSecretTap();
 });

@@ -257,6 +257,49 @@
 
 </div><!-- /screen -->
 
+<!-- ══ Dev: Password Modal ══ -->
+<div id="dev-pwd-modal" style="display:none;position:fixed;inset:0;z-index:99990;
+     background:rgba(0,0,0,.88);align-items:center;justify-content:center;
+     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  <div class="dev-modal-box">
+    <div class="dev-modal-icon"><i class="fa-solid fa-lock"></i></div>
+    <div class="dev-modal-title">دخول المطور</div>
+    <input type="password" id="dev-pwd-input" class="dev-pwd-input"
+           placeholder="كلمة السر" maxlength="10"
+           onkeydown="if(event.key==='Enter')checkDevPassword()">
+    <div id="dev-pwd-error" class="dev-pwd-error" style="display:none">
+      <i class="fa-solid fa-circle-xmark"></i> كلمة السر غير صحيحة
+    </div>
+    <div class="dev-modal-btns">
+      <button class="dev-btn-primary" onclick="checkDevPassword()">
+        <i class="fa-solid fa-unlock"></i> دخول
+      </button>
+      <button class="dev-btn-secondary" onclick="closeDevModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Dev: Admin Panel ══ -->
+<div id="dev-panel" style="display:none;position:fixed;inset:0;z-index:99991;
+     background:rgba(0,0,0,.90);align-items:center;justify-content:center;
+     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  <div class="dev-panel-box">
+    <div class="dev-panel-header">
+      <i class="fa-solid fa-gear"></i>
+      <span>لوحة التحكم</span>
+      <button class="dev-panel-close-btn" onclick="closeAdminPanel()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="dev-panel-body" class="dev-panel-body"></div>
+    <div class="dp-footer" id="dp-footer">
+      <button class="dev-btn-save" onclick="saveDevSettings()">
+        <i class="fa-solid fa-floppy-disk"></i> حفظ التغييرات
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="products.js"></script>
 <script src="slides.js"></script>
 <script src="main.js"></script>
