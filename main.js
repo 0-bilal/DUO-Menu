@@ -542,6 +542,108 @@ function fillSlideProgress() {
 }
 
 /* ════════════════════════════════════════════════════════
+   HIDDEN: الضغط 3× على اللوجو → مسح الكاش + تحديث إجباري
+════════════════════════════════════════════════════════ */
+function setupLogoSecretTap() {
+  const logoWrap = $('logo-wrap');
+  if (!logoWrap) return;
+
+  let tapCount = 0;
+  let tapTimer = null;
+  let lastTouchEnd = 0;
+
+  function onTap() {
+    tapCount++;
+    clearTimeout(tapTimer);
+    _showUpdateToast(tapCount);
+
+    if (tapCount >= 3) {
+      tapCount = 0;
+      _forceUpdateApp();
+      return;
+    }
+    tapTimer = setTimeout(() => { tapCount = 0; _hideUpdateToast(); }, 2000);
+  }
+
+  // touchend — أسرع وأكثر موثوقية على شاشات اللمس
+  logoWrap.addEventListener('touchend', e => {
+    e.preventDefault();          // يمنع الـ click المزدوج بعده
+    lastTouchEnd = Date.now();
+    onTap();
+  }, { passive: false });
+
+  // click كبديل (ماوس / متصفح سطح مكتب)
+  logoWrap.addEventListener('click', () => {
+    if (Date.now() - lastTouchEnd < 400) return; // تجنب التكرار بعد touchend
+    onTap();
+  });
+}
+
+/* شريط تقدم صغير في أعلى الشاشة */
+function _showUpdateToast(count) {
+  let toast = $('update-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'update-toast';
+    document.body.appendChild(toast);
+    Object.assign(toast.style, {
+      position: 'fixed', top: '18px', left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'rgba(10,0,2,.88)',
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
+      border: '1px solid rgba(190,30,45,.35)',
+      color: '#fff', borderRadius: '100px',
+      padding: '12px 32px', fontSize: '20px',
+      fontFamily: "'Tajawal',sans-serif", fontWeight: '700',
+      zIndex: '99999', pointerEvents: 'none',
+      opacity: '0', transition: 'opacity .25s',
+      whiteSpace: 'nowrap',
+    });
+  }
+
+  clearTimeout(toast._hide);
+
+  const dots = ['○ ○ ○', '◉ ○ ○', '◉ ◉ ○', '◉ ◉ ◉'][count] || '◉ ◉ ◉';
+
+  if (count < 3) {
+    toast.innerHTML =
+      `<span style="color:var(--red,#be1e2d);letter-spacing:8px">${dots}</span>`;
+    toast.style.opacity = '1';
+    toast._hide = setTimeout(_hideUpdateToast, 1800);
+  } else {
+    toast.innerHTML =
+      `<i class="fa-solid fa-arrows-rotate" style="color:#be1e2d;margin-left:10px"></i>` +
+      `جاري تحديث التطبيق…`;
+    toast.style.opacity = '1';
+  }
+}
+
+function _hideUpdateToast() {
+  const toast = $('update-toast');
+  if (toast) toast.style.opacity = '0';
+}
+
+async function _forceUpdateApp() {
+  try {
+    // 1. مسح جميع الـ caches
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    // 2. إلغاء تسجيل الـ Service Worker (سيُعاد تسجيله بعد الريلود)
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+  } catch (e) {
+    console.warn('[Update] Cache clear error:', e);
+  }
+  // 3. إعادة تحميل إجبارية بعد لحظة لتظهر رسالة التحديث
+  setTimeout(() => window.location.reload(true), 900);
+}
+
+/* ════════════════════════════════════════════════════════
    INIT
 ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -600,4 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start auto-scroll after padding is applied (rAF inside fixScrollablePadding)
   setTimeout(startAutoScroll, 900);
+
+  // سر اللوجو: 3 ضغطات → تحديث إجباري
+  setupLogoSecretTap();
 });
