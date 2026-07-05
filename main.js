@@ -169,6 +169,13 @@ function renderAllCategories() {
           </div>
         </div>`;
 
+      // ② عرض تفاصيل المنتج عند الضغط
+      card.addEventListener('click', () => {
+        const idx = allItemEls.indexOf(card);
+        pauseAutoScroll();
+        showProductOverlay(item, idx);
+      });
+
       area.appendChild(card);
       allItemEls.push(card);
     });
@@ -367,6 +374,108 @@ function startAutoScroll() {
 }
 
 /* ════════════════════════════════════════════════════════
+   PRODUCT DETAIL OVERLAY
+════════════════════════════════════════════════════════ */
+let productOverlayTimer    = null;
+let productOverlayItemIdx  = -1;
+let overlayChanging        = false;
+const PRODUCT_OVERLAY_DURATION = 8000;   // ms — إغلاق تلقائي
+const OVERLAY_CHANGE_DURATION  = 280;    // ms — مدة تلاشي المحتوى قبل التبديل
+const OVERLAY_CLOSE_DURATION   = 430;    // ms — مدة انتقال الإغلاق
+
+/* ── تعبئة بيانات المنتج دون أي تأثير ── */
+function _fillOverlayContent(item, idx) {
+  productOverlayItemIdx = idx;
+
+  const imgEl     = $('product-overlay-img');
+  const imgPh     = $('product-overlay-img-ph');
+  const priceWrap = $('product-overlay-price-wrap');
+  const calEl     = $('product-overlay-cal');
+
+  $('product-overlay-name-ar').textContent = item.nameAr        || '';
+  $('product-overlay-name-en').textContent = item.nameEn        || '';
+  $('product-overlay-desc').textContent    = item.descriptionAr || '';
+  $('product-overlay-desc').style.display  = item.descriptionAr ? 'block' : 'none';
+
+  if (item.calories) {
+    $('product-overlay-cal-num').textContent = item.calories;
+    calEl.style.display = 'inline-flex';
+  } else {
+    calEl.style.display = 'none';
+  }
+
+  if (item.image) {
+    imgEl.src           = item.image;
+    imgEl.style.display = 'block';
+    imgPh.style.display = 'none';
+  } else {
+    imgEl.style.display = 'none';
+    imgPh.style.display = 'flex';
+  }
+
+  if (item.price != null) {
+    $('product-overlay-price-num').textContent = item.price;
+    priceWrap.style.display = 'inline-flex';
+  } else {
+    priceWrap.style.display = 'none';
+  }
+
+  highlightItem(idx);
+}
+
+/* ── إظهار الـ overlay / التبديل بين المنتجات ── */
+function showProductOverlay(item, idx) {
+  const overlay = $('product-overlay');
+
+  clearTimeout(productOverlayTimer);
+  productOverlayTimer = setTimeout(hideProductOverlay, PRODUCT_OVERLAY_DURATION);
+
+  if (overlay.classList.contains('active')) {
+    /* الـ overlay مفتوح — تبديل سلس بين منتجين */
+    if (overlayChanging) return;          // تجاهل النقر السريع جداً
+    overlayChanging = true;
+    overlay.classList.add('changing');
+
+    setTimeout(() => {
+      _fillOverlayContent(item, idx);
+      overlay.classList.remove('changing');
+      overlayChanging = false;
+    }, OVERLAY_CHANGE_DURATION);
+
+  } else {
+    /* فتح أول مرة — ينبثق من الأسفل */
+    _fillOverlayContent(item, idx);
+    overlay.classList.remove('closing');
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('active')));
+  }
+}
+
+/* ── إغلاق الـ overlay والعودة للتلقائي ── */
+function hideProductOverlay() {
+  clearTimeout(productOverlayTimer);
+  overlayChanging = false;
+
+  // إلغاء تحديد المنتج
+  if (productOverlayItemIdx >= 0) {
+    allItemEls[productOverlayItemIdx]?.classList.remove('highlighted');
+    productOverlayItemIdx = -1;
+  }
+
+  const overlay = $('product-overlay');
+  overlay.classList.remove('active', 'changing');
+  overlay.classList.add('closing');
+
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    overlay.classList.remove('closing');
+    // العودة للتمرير التلقائي بعد اكتمال الانتقال
+    resumeAutoScroll();
+  }, OVERLAY_CLOSE_DURATION);
+}
+window.hideProductOverlay = hideProductOverlay;
+
+/* ════════════════════════════════════════════════════════
    SLIDESHOW
 ════════════════════════════════════════════════════════ */
 let curSlide  = 0;
@@ -462,6 +571,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabsRow = $('category-tabs');
   if (tabsRow) {
     tabsRow.addEventListener('touchstart', pauseAutoScroll, { passive: true });
+  }
+
+  // ① Swipe يميناً/يساراً على لوحة الصور لتغيير الشريحة يدوياً
+  const slidesWrapper = $('slides-wrapper');
+  if (slidesWrapper) {
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+
+    slidesWrapper.addEventListener('touchstart', e => {
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    slidesWrapper.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - swipeStartX;
+      const dy = e.changedTouches[0].clientY - swipeStartY;
+      // تجاهل إذا كانت الحركة رأسية أكثر من أفقية
+      if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx)) return;
+      // الصفحة RTL: تمرير يساراً (dx < 0) = الشريحة التالية
+      if (dx < 0) {
+        goToSlide((curSlide + 1) % slides.length);
+      } else {
+        goToSlide((curSlide - 1 + slides.length) % slides.length);
+      }
+    }, { passive: true });
   }
 
   // Start auto-scroll after padding is applied (rAF inside fixScrollablePadding)

@@ -11,8 +11,8 @@ const restaurantInfo = {
   phone:        '----',
   workingHours: '12:00 م – 03:00 ص',
   workingDays:  'طوال أيام الأسبوع',
-  instagram:    'duo_brger1@',
-  tiktok:       'theduoburger@',
+  instagram:    '@duo_brger1',
+  tiktok:       '@theduoburger',
   address:      'مكه - حي الشوقية',
   taxNote:      'الأسعار شاملة ضريبة القيمة المضافة 15%',
 };
@@ -47,7 +47,7 @@ const menuCategories = [
       {
         nameAr:        'أضافة شريحة لحم',
         nameEn:        'Add a ٍٍٍٍٍٍslice Of Meat',
-        image:         'images/products/add-meat.jpg',
+        image:         '',
         price:         6,
         calories:      120,        
         descriptionAr: 'كملها بإضافة شريحة لحم على البرجر ليصبح تريبل، أو. كواردير تصل شريحة اللحم الواحدة 70 غم',
@@ -111,14 +111,14 @@ const menuCategories = [
       {
         nameAr:        'مشروب غازي',
         nameEn:        'SDoft Drink',
-        image:         'images/products/Cola.jpg',
+        image:         '',
         price:         3,
          descriptionAr: 'كولا، كولا دايت، كولا زيرو،  سبرايت',
       },
       {
         nameAr:        'مياه',
         nameEn:        'Water',
-        image:         'images/products/water.jpg',
+        image:         '',
         price:         1,
       },
     ],

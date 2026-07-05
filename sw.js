@@ -15,7 +15,7 @@ const PRECACHE = [
   '/products.js',
   '/slides.js',
   '/manifest.json',
-  '/icons/icon.svg',
+  '/icons/logo.ico',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   /* slide images */

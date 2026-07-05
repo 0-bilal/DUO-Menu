@@ -105,6 +105,46 @@
       <!-- Rendered by main.js -->
     </div>
 
+    <!-- Product Detail Overlay -->
+    <div id="product-overlay" class="product-overlay">
+
+      <!-- خلفية: صورة المنتج تملأ المساحة كاملاً -->
+      <img id="product-overlay-img" class="product-overlay-bg-img" src="" alt="">
+      <div id="product-overlay-img-ph" class="product-overlay-placeholder">
+        <i class="fa-solid fa-burger"></i>
+      </div>
+
+      <!-- طبقة التدرّج الداكن -->
+      <div class="product-overlay-gradient"></div>
+
+      <!-- زر الإغلاق -->
+      <button class="product-overlay-close" onclick="hideProductOverlay()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- معلومات المنتج — أسفل الشاشة -->
+      <div class="product-overlay-info">
+
+        <!-- السعرات الحرارية -->
+        <div id="product-overlay-cal" class="product-overlay-cal-badge" style="display:none">
+          <i class="fa-solid fa-fire-flame-curved"></i>
+          <span id="product-overlay-cal-num"></span>
+          <span>سعرة حرارية</span>
+        </div>
+
+        <div id="product-overlay-name-ar" class="product-overlay-name-ar"></div>
+        <div id="product-overlay-name-en" class="product-overlay-name-en"></div>
+        <div id="product-overlay-desc" class="product-overlay-desc"></div>
+
+        <!-- السعر -->
+        <div id="product-overlay-price-wrap" class="product-overlay-price-wrap" style="display:none">
+          <span id="product-overlay-price-num" class="product-overlay-price-num"></span>
+          <span class="product-overlay-price-cur">ريال</span>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Floating info widget (overlays the slideshow) -->
     <div class="fab-widget" id="fab-widget">
 
