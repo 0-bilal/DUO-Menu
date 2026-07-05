@@ -556,8 +556,8 @@ function showReviewOverlay() {
   // إيقاف عداد سابق
   clearTimeout(_reviewTimer);
 
-  // إظهار
-  overlay.style.display = 'flex';
+  // إظهار — block يكفي لأن التخطيط الداخلي يعتمد على position:absolute
+  overlay.style.display = 'block';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     overlay.classList.remove('closing');
     overlay.classList.add('active');

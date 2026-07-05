@@ -172,35 +172,32 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
 
-      <!-- خلفية ضبابية بتأثير ضوء -->
+      <!-- خلفية ضبابية -->
       <div class="review-glow"></div>
 
-      <!-- الجزء العلوي: الأيقونة والعنوان -->
-      <div class="review-top">
+      <!-- محتوى الـ overlay — عمود واحد -->
+      <div class="review-body">
+
         <div class="review-gmaps-icon">
           <i class="fa-solid fa-map-location-dot"></i>
         </div>
+
         <div class="review-headline-ar">قيّم تجربتك في <span id="review-rest-name">DUO Burger</span></div>
+
         <div class="review-stars">
           <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
           <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
           <i class="fa-solid fa-star"></i>
         </div>
-      </div>
 
-      <!-- الخصم المُميز -->
-      <div class="review-discount-block">
-        <span class="review-discount-label-top">واحصل على خصم</span>
-        <span class="review-discount-pct">10%</span>
-        <span class="review-discount-label-bot">في زيارتك القادمة</span>
-      </div>
+        <div class="review-discount-block">
+          <span class="review-discount-label-top">واحصل على خصم</span>
+          <span class="review-discount-pct">10%</span>
+          <span class="review-discount-label-bot">في زيارتك القادمة</span>
+        </div>
 
-      <div class="review-divider"></div>
+        <div class="review-divider"></div>
 
-      <!-- القسم السفلي: عمودان -->
-      <div class="review-bottom-row">
-
-        <!-- الخطوات — يمين -->
         <div class="review-steps">
           <div class="review-step">
             <span class="review-step-num">1</span>
@@ -216,20 +213,22 @@
           </div>
         </div>
 
-        <!-- QR — يسار -->
+        <div class="review-divider"></div>
+
+        <!-- QR أسفل كل شيء -->
         <div class="review-qr-area">
           <div class="review-qr-box">
             <img id="review-qr-img" src="" alt="QR Code" style="display:none"
                  onerror="this.style.display='none';var f=document.getElementById('review-qr-fallback');if(f)f.style.display='flex'">
             <div id="review-qr-fallback" class="review-qr-fallback">
               <i class="fa-brands fa-google"></i>
-              <span>أضف صورة<br>QR هنا</span>
+              <span>أضف صورة QR هنا</span>
             </div>
           </div>
-          <div class="review-qr-label">امسح الكود بجوالك</div>
+          <div class="review-qr-label">امسح الكود بجوالك للتقييم</div>
         </div>
 
-      </div><!-- /review-bottom-row -->
+      </div><!-- /review-body -->
 
       <!-- شريط العداد التلقائي -->
       <div class="review-timer-bar">
