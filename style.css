@@ -801,41 +801,87 @@ html,body {
 /* ── نافذة كلمة السر ── */
 .dev-modal-box {
   background:#111; border:1px solid rgba(255,255,255,.12);
-  border-radius:24px; padding:52px 48px;
-  width:500px; display:flex; flex-direction:column;
-  align-items:center; gap:22px;
-  box-shadow:0 24px 80px rgba(0,0,0,.85);
+  border-radius:28px; padding:44px 44px 36px;
+  width:540px; display:flex; flex-direction:column;
+  align-items:center; gap:20px;
+  box-shadow:0 28px 90px rgba(0,0,0,.90);
 }
-.dev-modal-icon { font-size:64px; color:var(--red); }
-.dev-modal-title { font-size:34px; font-weight:900; color:#fff; }
-.dev-pwd-input {
-  width:100%; padding:20px 24px;
-  background:rgba(255,255,255,.07);
-  border:1.5px solid rgba(255,255,255,.15);
-  border-radius:14px; color:#fff;
-  font-size:30px; font-family:var(--en);
-  letter-spacing:8px; text-align:center;
-  outline:none; transition:border-color .2s;
+.dev-modal-icon { font-size:60px; color:var(--red); }
+.dev-modal-title { font-size:32px; font-weight:900; color:#fff; margin-top:-4px; }
+
+/* شاشة النقاط */
+.dev-pin-display {
+  display:flex; gap:16px; align-items:center;
+  padding:14px 28px;
+  background:rgba(255,255,255,.05);
+  border:1.5px solid rgba(255,255,255,.10);
+  border-radius:100px; min-width:260px; justify-content:center;
 }
-.dev-pwd-input:focus { border-color:var(--red); }
+.dev-pin-dot {
+  width:20px; height:20px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.30);
+  background:transparent;
+  transition:background .15s, border-color .15s, transform .12s;
+}
+.dev-pin-dot.filled {
+  background:var(--red); border-color:var(--red);
+  transform:scale(1.15);
+}
+@keyframes pinShake {
+  0%,100% { transform:translateX(0); }
+  20%,60%  { transform:translateX(-10px); }
+  40%,80%  { transform:translateX(10px); }
+}
+.dev-pin-display.shake { animation:pinShake .45s ease; }
+
+/* رسالة الخطأ */
 .dev-pwd-error {
-  color:#f87171; font-size:20px;
-  display:flex; align-items:center; gap:8px;
+  color:#f87171; font-size:19px;
+  display:flex; align-items:center; gap:8px; font-weight:600;
 }
-.dev-modal-btns { display:flex; gap:14px; width:100%; }
-.dev-btn-primary {
-  flex:1; padding:18px; background:var(--red); color:#fff;
-  border-radius:12px; font-size:24px; font-weight:700;
-  font-family:var(--ar); display:flex; align-items:center;
-  justify-content:center; gap:10px; transition:opacity .2s;
+
+/* لوحة الأرقام */
+.dev-keypad {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:12px; width:100%;
 }
-.dev-btn-primary:active { opacity:.82; }
-.dev-btn-secondary {
-  padding:18px 28px; background:rgba(255,255,255,.08);
-  color:rgba(255,255,255,.65); border-radius:12px;
-  font-size:24px; font-family:var(--ar); transition:opacity .2s;
+.dev-key {
+  height:76px; border-radius:16px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.10);
+  color:#fff; font-size:30px; font-weight:700;
+  font-family:var(--en);
+  display:flex; align-items:center; justify-content:center;
+  transition:background .12s, transform .1s;
+  cursor:pointer;
 }
-.dev-btn-secondary:active { opacity:.7; }
+.dev-key:active { background:rgba(255,255,255,.18); transform:scale(.93); }
+
+/* زر الحذف */
+.dev-key-del {
+  background:rgba(190,30,45,.18);
+  border-color:rgba(190,30,45,.30);
+  color:#f87171; font-size:26px;
+}
+.dev-key-del:active { background:rgba(190,30,45,.35); }
+
+/* زر OK */
+.dev-key-ok {
+  background:#22c55e;
+  border-color:#16a34a;
+  color:#fff; font-size:24px; font-weight:900;
+  font-family:var(--en);
+  letter-spacing:1px;
+}
+.dev-key-ok:active { background:#16a34a; }
+
+/* زر الإلغاء */
+.dev-btn-cancel {
+  color:rgba(255,255,255,.40); font-size:20px;
+  font-family:var(--ar); padding:8px 24px;
+  transition:color .15s;
+}
+.dev-btn-cancel:active { color:rgba(255,255,255,.70); }
 
 /* ── لوحة التحكم ── */
 .dev-panel-box {
@@ -893,6 +939,20 @@ html,body {
 .dp-row-label small {
   font-size:14px; font-weight:400; color:rgba(255,255,255,.30);
   font-family:var(--en); letter-spacing:.5px;
+}
+/* صفوف الأنواع الفرعية (variants) */
+.dp-row-variant {
+  padding-right:32px;
+  background:rgba(255,255,255,.02);
+  border-top:1px solid rgba(255,255,255,.04);
+}
+.dp-variant-label {
+  font-size:19px !important; font-weight:400 !important;
+  color:rgba(255,255,255,.65) !important;
+  flex-direction:row !important; align-items:center; gap:8px !important;
+}
+.dp-variant-arrow {
+  font-size:14px; color:rgba(255,255,255,.30);
 }
 
 /* مفتاح التبديل */

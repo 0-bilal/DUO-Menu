@@ -259,23 +259,50 @@
 
 <!-- ══ Dev: Password Modal ══ -->
 <div id="dev-pwd-modal" style="display:none;position:fixed;inset:0;z-index:99990;
-     background:rgba(0,0,0,.88);align-items:center;justify-content:center;
-     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+     background:rgba(0,0,0,.90);align-items:center;justify-content:center;
+     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)">
   <div class="dev-modal-box">
+
+    <!-- أيقونة + عنوان -->
     <div class="dev-modal-icon"><i class="fa-solid fa-lock"></i></div>
     <div class="dev-modal-title">دخول المطور</div>
-    <input type="password" id="dev-pwd-input" class="dev-pwd-input"
-           placeholder="كلمة السر" maxlength="10"
-           onkeydown="if(event.key==='Enter')checkDevPassword()">
+
+    <!-- شاشة عرض الأرقام المدخلة -->
+    <div class="dev-pin-display" id="dev-pin-display">
+      <span class="dev-pin-dot" id="dev-pin-dot-0"></span>
+      <span class="dev-pin-dot" id="dev-pin-dot-1"></span>
+      <span class="dev-pin-dot" id="dev-pin-dot-2"></span>
+      <span class="dev-pin-dot" id="dev-pin-dot-3"></span>
+      <span class="dev-pin-dot" id="dev-pin-dot-4"></span>
+      <span class="dev-pin-dot" id="dev-pin-dot-5"></span>
+    </div>
+
+    <!-- رسالة الخطأ -->
     <div id="dev-pwd-error" class="dev-pwd-error" style="display:none">
       <i class="fa-solid fa-circle-xmark"></i> كلمة السر غير صحيحة
     </div>
-    <div class="dev-modal-btns">
-      <button class="dev-btn-primary" onclick="checkDevPassword()">
-        <i class="fa-solid fa-unlock"></i> دخول
+
+    <!-- لوحة الأرقام -->
+    <div class="dev-keypad">
+      <button class="dev-key" onclick="devKeyPress('1')">1</button>
+      <button class="dev-key" onclick="devKeyPress('2')">2</button>
+      <button class="dev-key" onclick="devKeyPress('3')">3</button>
+      <button class="dev-key" onclick="devKeyPress('4')">4</button>
+      <button class="dev-key" onclick="devKeyPress('5')">5</button>
+      <button class="dev-key" onclick="devKeyPress('6')">6</button>
+      <button class="dev-key" onclick="devKeyPress('7')">7</button>
+      <button class="dev-key" onclick="devKeyPress('8')">8</button>
+      <button class="dev-key" onclick="devKeyPress('9')">9</button>
+      <button class="dev-key dev-key-del" onclick="devKeyDelete()">
+        <i class="fa-solid fa-delete-left"></i>
       </button>
-      <button class="dev-btn-secondary" onclick="closeDevModal()">إلغاء</button>
+      <button class="dev-key" onclick="devKeyPress('0')">0</button>
+      <button class="dev-key dev-key-ok" onclick="checkDevPassword()">OK</button>
     </div>
+
+    <!-- إلغاء -->
+    <button class="dev-btn-cancel" onclick="closeDevModal()">إلغاء</button>
+
   </div>
 </div>
 

@@ -137,7 +137,7 @@ function renderAllCategories() {
             ? `<div class="item-desc">${item.descriptionAr}</div>` : ''}
           ${item.variants?.length
             ? `<div class="item-variants">
-                 ${item.variants.map(v => `<span class="item-variant-tag">${v}</span>`).join('')}
+                 ${item.variants.map(v => `<span class="item-variant-tag" data-vkey="${_devItemKey(cat.id, item.nameAr)}||${v}">${v}</span>`).join('')}
                </div>` : ''}
           <div class="item-meta">
             ${item.calories
@@ -449,10 +449,12 @@ function _fillOverlayContent(item, idx) {
   const variantsEl = $('product-overlay-variants');
   if (variantsEl) {
     if (item.variants?.length) {
+      const catId = menuCategories.find(c => c.items.includes(item))?.id || '';
       variantsEl.innerHTML = item.variants
-        .map(v => `<span class="overlay-variant-tag">${v}</span>`)
+        .filter(v => !_devHiddenVariants.has(_devItemKey(catId, item.nameAr) + '||' + v))
+        .map(v => `<span class="overlay-variant-tag" data-vkey="${_devItemKey(catId, item.nameAr)}||${v}">${v}</span>`)
         .join('');
-      variantsEl.style.display = 'flex';
+      variantsEl.style.display = variantsEl.innerHTML ? 'flex' : 'none';
     } else {
       variantsEl.innerHTML = '';
       variantsEl.style.display = 'none';
@@ -806,21 +808,28 @@ const DEV_PASSWORD = '812100';
 const SS_ITEMS     = 'duo_hidden_items';
 const SS_SLIDES    = 'duo_hidden_slides';
 const SS_DISCOUNT  = 'duo_discount_hidden';
+const SS_PHONE     = 'duo_phone_hidden';
+const SS_VARIANTS  = 'duo_hidden_variants';
 
 let _devHiddenItems    = new Set();
 let _devHiddenSlides   = new Set();
+let _devHiddenVariants = new Set();
 let _devDiscountHidden = false;
+let _devPhoneHidden    = false;
 
 function _devItemKey(catId, nameAr) { return catId + '||' + nameAr; }
 
 /* تحميل الإعدادات من sessionStorage */
 function _devLoadSettings() {
   try {
-    _devHiddenItems    = new Set(JSON.parse(sessionStorage.getItem(SS_ITEMS)  || '[]'));
-    _devHiddenSlides   = new Set(JSON.parse(sessionStorage.getItem(SS_SLIDES) || '[]').map(String));
+    _devHiddenItems    = new Set(JSON.parse(sessionStorage.getItem(SS_ITEMS)    || '[]'));
+    _devHiddenSlides   = new Set(JSON.parse(sessionStorage.getItem(SS_SLIDES)   || '[]').map(String));
+    _devHiddenVariants = new Set(JSON.parse(sessionStorage.getItem(SS_VARIANTS) || '[]'));
     _devDiscountHidden = sessionStorage.getItem(SS_DISCOUNT) === 'true';
+    _devPhoneHidden    = sessionStorage.getItem(SS_PHONE)    === 'true';
   } catch(e) {
-    _devHiddenItems = new Set(); _devHiddenSlides = new Set(); _devDiscountHidden = false;
+    _devHiddenItems = new Set(); _devHiddenSlides = new Set();
+    _devHiddenVariants = new Set(); _devDiscountHidden = false;
   }
 }
 
@@ -844,38 +853,93 @@ function applyDevSettings() {
     goToSlide((curSlide + 1) % slides.length);
   }
 
+  // الخيارات / الأنواع (variants)
+  document.querySelectorAll('.item-variant-tag[data-vkey]').forEach(tag => {
+    tag.style.display = _devHiddenVariants.has(tag.dataset.vkey) ? 'none' : '';
+  });
+
   // زر الخصم
   const discBtn = document.querySelector('.header-discount-btn');
   if (discBtn) discBtn.style.display = _devDiscountHidden ? 'none' : '';
+
+  // زر الهاتف
+  const phoneRow = $('header-phone-row');
+  if (phoneRow) phoneRow.style.display = _devPhoneHidden ? 'none' : '';
 
   // عداد المنتجات
   const visCount = allItemEls.filter(el => el.style.display !== 'none').length;
   setText('scroll-total', String(visCount || allItemEls.length));
 }
 
+/* ── لوحة الأرقام المخصصة ── */
+let _devPinValue = '';
+const PIN_MAX = DEV_PASSWORD.length;  // 6 خانات
+
+function _updatePinDisplay() {
+  for (let i = 0; i < PIN_MAX; i++) {
+    const dot = $('dev-pin-dot-' + i);
+    if (dot) dot.classList.toggle('filled', i < _devPinValue.length);
+  }
+}
+
+function devKeyPress(digit) {
+  if (_devPinValue.length >= PIN_MAX) return;
+  // إخفاء رسالة الخطأ عند البدء بالإدخال مجدداً
+  const err = $('dev-pwd-error');
+  if (err) err.style.display = 'none';
+  _devPinValue += digit;
+  _updatePinDisplay();
+  // تحقق تلقائي عند اكتمال الخانات
+  if (_devPinValue.length === PIN_MAX) {
+    setTimeout(checkDevPassword, 180);
+  }
+}
+
+function devKeyDelete() {
+  _devPinValue = _devPinValue.slice(0, -1);
+  _updatePinDisplay();
+  const err = $('dev-pwd-error');
+  if (err) err.style.display = 'none';
+}
+
+window.devKeyPress  = devKeyPress;
+window.devKeyDelete = devKeyDelete;
+
 /* نافذة كلمة السر */
 function showDevPasswordModal() {
   const modal = $('dev-pwd-modal');
   if (!modal) return;
-  modal.style.display = 'flex';
-  const inp = $('dev-pwd-input');
-  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
+  _devPinValue = '';
+  _updatePinDisplay();
   const err = $('dev-pwd-error');
   if (err) err.style.display = 'none';
+  modal.style.display = 'flex';
 }
 function closeDevModal() {
-  const m = $('dev-pwd-modal'); if (m) m.style.display = 'none';
+  const m = $('dev-pwd-modal');
+  if (m) m.style.display = 'none';
+  _devPinValue = '';
 }
 function checkDevPassword() {
-  const inp = $('dev-pwd-input');
-  if (!inp) return;
-  if (inp.value === DEV_PASSWORD) {
+  if (_devPinValue === DEV_PASSWORD) {
     closeDevModal();
     showAdminPanel();
   } else {
+    // هزّ شاشة النقاط وأظهر الخطأ
+    const display = $('dev-pin-display');
+    if (display) {
+      display.classList.remove('shake');
+      void display.offsetWidth; // إعادة تشغيل الـ animation
+      display.classList.add('shake');
+    }
     const err = $('dev-pwd-error');
     if (err) err.style.display = 'flex';
-    inp.value = ''; inp.focus();
+    setTimeout(() => {
+      _devPinValue = '';
+      _updatePinDisplay();
+      if (display) display.classList.remove('shake');
+      if (err) err.style.display = 'none';
+    }, 1200);
   }
 }
 window.showDevPasswordModal = showDevPasswordModal;
@@ -897,9 +961,16 @@ function _renderAdminPanel() {
   const body = $('dev-panel-body'); if (!body) return;
   let html = '';
 
-  /* زر الخصم */
+  /* الأزرار العامة */
   html += `<div class="dp-section">
-    <div class="dp-section-title"><i class="fa-solid fa-tags"></i> زر الخصم</div>
+    <div class="dp-section-title"><i class="fa-solid fa-sliders"></i> الهيدر</div>
+    <label class="dp-row">
+      <span class="dp-row-label">إظهار رقم الهاتف</span>
+      <span class="dp-toggle">
+        <input type="checkbox" id="dev-toggle-phone" ${!_devPhoneHidden ? 'checked' : ''}>
+        <span class="dp-slider"></span>
+      </span>
+    </label>
     <label class="dp-row">
       <span class="dp-row-label">إظهار زر خصم 10%</span>
       <span class="dp-toggle">
@@ -941,6 +1012,22 @@ function _renderAdminPanel() {
           <span class="dp-slider"></span>
         </span>
       </label>`;
+      // الأنواع الفرعية
+      if (item.variants?.length) {
+        item.variants.forEach(v => {
+          const vkey = key + '||' + v;
+          html += `<label class="dp-row dp-row-variant">
+            <span class="dp-row-label dp-variant-label">
+              <i class="fa-solid fa-angle-left dp-variant-arrow"></i> ${v}
+            </span>
+            <span class="dp-toggle">
+              <input type="checkbox" data-type="variant" data-key="${vkey}"
+                     ${!_devHiddenVariants.has(vkey) ? 'checked' : ''}>
+              <span class="dp-slider"></span>
+            </span>
+          </label>`;
+        });
+      }
     });
     html += `</div>`;
   });
@@ -960,6 +1047,9 @@ function saveDevSettings() {
   const dc = $('dev-toggle-discount');
   if (dc) _devDiscountHidden = !dc.checked;
 
+  const ph = $('dev-toggle-phone');
+  if (ph) _devPhoneHidden = !ph.checked;
+
   _devHiddenSlides = new Set();
   document.querySelectorAll('[data-type="slide"]').forEach(inp => {
     if (!inp.checked) _devHiddenSlides.add(inp.dataset.idx);
@@ -970,9 +1060,16 @@ function saveDevSettings() {
     if (!inp.checked) _devHiddenItems.add(inp.dataset.key);
   });
 
+  _devHiddenVariants = new Set();
+  document.querySelectorAll('[data-type="variant"]').forEach(inp => {
+    if (!inp.checked) _devHiddenVariants.add(inp.dataset.key);
+  });
+
   sessionStorage.setItem(SS_ITEMS,    JSON.stringify([..._devHiddenItems]));
   sessionStorage.setItem(SS_SLIDES,   JSON.stringify([..._devHiddenSlides]));
+  sessionStorage.setItem(SS_VARIANTS, JSON.stringify([..._devHiddenVariants]));
   sessionStorage.setItem(SS_DISCOUNT, String(_devDiscountHidden));
+  sessionStorage.setItem(SS_PHONE,    String(_devPhoneHidden));
 
   applyDevSettings();
 
