@@ -96,7 +96,7 @@ const menuCategories = [
         nameEn:        'Spicy Wedges',
         image:         'images/products/spicy-wedges.jpg',
         price:         19,
-        descriptionAr: 'البطاطس المقلية الذهبية معصوص ديو أو أوريغا من اختيارك مع اللحم. وصوص الجبنة وقطع الهليبينو',
+        descriptionAr: 'البطاطس المقلية الذهبية معصوص ديو أو أوريغا من اختيارك و اللحم. وصوص الجبنة وقطع الهليبينو',
       },
     ],
   },
