@@ -6,6 +6,16 @@
  * - FAB: social always visible; phone & hours toggle on tap
  */
 
+/* ══ منع الزوم بالأصبعين (Pinch-to-Zoom) ══ */
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+document.addEventListener('gestureend',    e => e.preventDefault(), { passive: false });
+/* ══════════════════════════════════════════ */
+
 /* ── Config ── */
 const ITEM_DURATION   = 3500;  // ms per highlight step
 const HIGHLIGHT_DELAY = 80;    // ms to let CSS layout settle before centering
@@ -1257,4 +1267,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // سر اللوجو: 3 ضغطات → تحديث، 5 ضغطات → لوحة التحكم
   setupLogoSecretTap();
+
+  // ── مؤشر البطارية ──
+  initBattery();
 });
+
+/* ════════════════════════════════════════════════════════
+   BATTERY STATUS
+════════════════════════════════════════════════════════ */
+function initBattery() {
+  if (!navigator.getBattery) return;   // API غير مدعومة
+
+  navigator.getBattery().then(bat => {
+    _updateBattery(bat);
+
+    bat.addEventListener('levelchange',   () => _updateBattery(bat));
+    bat.addEventListener('chargingchange',() => _updateBattery(bat));
+  });
+}
+
+function _updateBattery(bat) {
+  const widget = $('battery-widget');
+  const boltEl = $('battery-bolt');
+  const pctEl  = $('battery-pct');
+  if (!widget || !boltEl || !pctEl) return;
+
+  const pct      = Math.round(bat.level * 100);
+  const charging = bat.charging;
+
+  // لون حسب الحالة
+  const color =
+    charging ? '#4ade80' :
+    pct > 50 ? 'rgba(255,255,255,.75)' :
+    pct > 20 ? '#fcd34d' : '#f87171';
+
+  // النسبة دائماً
+  pctEl.textContent   = pct + '%';
+  pctEl.style.color   = color;
+  pctEl.style.display = '';
+
+  // البرق فقط عند الشحن
+  boltEl.style.display = charging ? 'inline' : 'none';
+  boltEl.style.color   = color;
+
+  widget.classList.toggle('charging', charging);
+  widget.classList.toggle('low',      !charging && pct <= 20);
+  widget.style.display = 'flex';
+  const sep = $('battery-sep');
+  if (sep) sep.style.display = '';
+}

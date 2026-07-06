@@ -48,7 +48,7 @@ html,body {
   font-family:var(--ar);
   color:var(--white);
   direction:rtl;
-  touch-action:manipulation; /* ① منع التكبير بالضغط المزدوج */
+  touch-action:pan-x pan-y;  /* ① منع التكبير بالأصبعين والضغط المزدوج */
 }
 
 /* ════════════════════════════════════════════════════════
@@ -476,6 +476,7 @@ html,body {
   padding:12px 22px;
   display:flex; align-items:center; justify-content:space-between;
   flex-shrink:0; gap:14px;
+  position:relative;
 }
 .tax-note { display:flex; align-items:center; gap:8px; font-size:16px; color:var(--gray); }
 .tax-note i { color:var(--red); }
@@ -485,8 +486,8 @@ html,body {
 
 /* ── QB Credit ── */
 .qb-credit {
+  position:absolute; left:22px; top:50%; transform:translateY(-50%);
   display:flex; align-items:center; gap:7px;
-  margin-right:auto; /* يدفعه لأقصى اليسار في RTL */
   opacity:.55;
   transition:opacity .25s;
 }
@@ -497,6 +498,32 @@ html,body {
 }
 .qb-sep  { color:var(--gray); font-size:11px; }
 .qb-text { font-size:13px; font-weight:500; color:var(--gray); }
+
+/* ── Battery Widget ── */
+.battery-widget {
+  display:flex; align-items:center; gap:5px;
+  padding:5px 12px;
+  border-radius:30px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);
+  flex-shrink:0;
+  transition:background .5s, border-color .5s;
+}
+.battery-widget.charging {
+  background:rgba(34,197,94,.12);
+  border-color:rgba(34,197,94,.35);
+}
+.battery-widget.low {
+  background:rgba(239,68,68,.12);
+  border-color:rgba(239,68,68,.35);
+}
+.battery-widget i {
+  font-size:12px;
+}
+.battery-pct-text {
+  font-family:var(--en); font-size:12px; font-weight:700;
+  letter-spacing:.3px;
+}
 
 /* ════════════════════════════════════════════════════════
    PRODUCT DETAIL OVERLAY

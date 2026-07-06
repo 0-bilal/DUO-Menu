@@ -16,13 +16,24 @@
 
 const slides = [
   {
+    image: 'images/slides/slide6.png',
+    titleAr: '',
+    titleEn: "",
+    descriptionAr: '',
+    badge: null,
+    badgeColor: null,
+    price: null,
+    duration: 10000,
+  },
+  {
     image: 'images/slides/slide1.png',
-    titleAr: 'طبق اليوم',
+    titleAr: 'طبق جديد',
     titleEn: "Today's Special",
     descriptionAr: 'البطاطس المقلية الذهبية مع اللحم، والصوص والجبنة والهلبين',
     badge: 'جديد',
     badgeColor: 'gold',
     price: null,
+    duration: 7000,
   },
   {
     image: 'images/slides/slide2.png',

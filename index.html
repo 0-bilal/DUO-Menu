@@ -2,7 +2,7 @@
 <html lang="er" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=2000, height=1200, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=2000, height=1200, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>DUO Menu</title>
 
   <!-- ══ PWA ══ -->
@@ -105,6 +105,11 @@
         <span class="qb-brand">QB</span>
         <span class="qb-sep">|</span>
         <span class="qb-text">تطوير بلال الخواجة</span>
+        <span class="qb-sep" id="battery-sep" style="display:none">|</span>
+        <div id="battery-widget" class="battery-widget" style="display:none">
+          <i id="battery-bolt" class="fa-solid fa-bolt" style="display:none"></i>
+          <span id="battery-pct" class="battery-pct-text"></span>
+        </div>
       </div>
     </div>
 
