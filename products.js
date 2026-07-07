@@ -11,7 +11,7 @@ const restaurantInfo = {
   phone:        '..قريبا',
   workingHours: '12:00 م – 03:00 ص',
   workingDays:  'طوال أيام الأسبوع',
-  instagram:    'duo_brger1@',
+  instagram:    'duo_burger1@',
   tiktok:       'theduoburger@',
   address:      'مكه - حي الشوقية',
   taxNote:      'الأسعار شاملة ضريبة القيمة المضافة 15%',
