@@ -49,6 +49,7 @@ const menuCategories = [
       {
         nameAr:        'دبل ترافل برجر',
         nameEn:        'Double Truffle Burger',
+        image:         'images/products/Truffle-Burger.jpg',
         price:         26,
         descriptionAr: 'برجر اسماش دبل 140 غرام لعشاق النكهات العميقة والفريدة، ليقدم مزيجاً لا يُقاوم من المكونات الفاخرة التي تذوب في الفم وتأخذ حواسك إلى مستوى آخر        ',
       },
