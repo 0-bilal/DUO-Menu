@@ -4,16 +4,29 @@
  * Bump CACHE_NAME to force an update on all clients.
  */
 
-const CACHE_NAME = 'duo-menu-v1';
+const CACHE_NAME = 'duo-menu-v21';
 
 /* Core assets cached on install */
 const PRECACHE = [
   '/',
   '/index.html',
   '/style.css',
+  '/vmenu.css',
+  '/game.css',
+  '/game-xo.css',
   '/main.js',
+  '/vmenu.js',
   '/products.js',
   '/slides.js',
+  '/game.js',
+  '/game-xo.js',
+  '/games-hub.js',
+  '/dashboard.html',
+  '/dashboard.css',
+  '/dashboard.js',
+  '/duo-config.js',
+  '/duo-connect.js',
+  '/duo-sync.js',
   '/manifest.json',
   '/icons/logo.ico',
   '/icons/icon-192.png',
