@@ -51,6 +51,21 @@ html,body {
   touch-action:pan-x pan-y;  /* ① منع التكبير بالأصبعين والضغط المزدوج */
 }
 
+/* ② منع تحديد النص والقائمة عند الضغط المطوّل — كان يُظهر شريط النسخ/المشاركة
+   و"البحث بجوجل" (Touch to Search / Gemini) فوق المنيو على الأجهزة اللوحية */
+html,body,body * {
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+img { -webkit-user-drag:none; user-drag:none; }
+/* الحقول النصية (إن وُجدت) تبقى قابلة للكتابة والتحديد */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select:text;
+  user-select:text;
+}
+
 /* ════════════════════════════════════════════════════════
    SCREEN  —  مقاس التصميم الثابت 2000×1200، يُحجَّم عبر JS
    (fitScreenToViewport) ليملأ نافذة المتصفح دون قصّ.
@@ -81,7 +96,8 @@ html,body {
 .slide {
   position:absolute; inset:0;
   opacity:0; transition:opacity 1.4s cubic-bezier(.4,0,.2,1);
-  will-change:opacity;
+  /* بلا will-change دائم: كان يُبقي 7 طبقات GPU كبيرة في الذاكرة على الآيباد —
+     WebKit يرقّي الشريحة تلقائياً أثناء انتقال opacity فقط */
 }
 .slide.active { opacity:1; }
 .slide-img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -143,7 +159,7 @@ html,body {
 }
 .dot {
   height:7px; width:7px; border-radius:var(--rp);
-  background:rgba(255,255,255,.18); transition:all .4s; cursor:pointer;
+  background:rgba(255,255,255,.18); transition:width .4s, background .4s; cursor:pointer;
 }
 .dot.active { width:34px; background:var(--red); }
 
@@ -159,8 +175,9 @@ html,body {
 .social-bar {
   display:flex; align-items:center; gap:14px;
   padding:14px 30px 14px 22px;
-  background:rgba(4,0,1,.82);
-  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  /* خلفية شبه معتمة بدل backdrop-filter: التمويه فوق الشرائح المتحركة كان
+     يُعاد حسابه في كل إطار أثناء تبديل الشريحة (ثقيل جداً على الآيباد) */
+  background:rgba(4,0,1,.90);
   border-radius:0 100px 100px 0;
   border:1px solid rgba(255,255,255,.10); border-left:none;
   box-shadow:4px 0 18px rgba(0,0,0,.45);
@@ -247,9 +264,11 @@ html,body {
 }
 
 /* ── زر الخصم 10% ── */
-@keyframes discountPulse {
-  0%,100% { box-shadow:0 0 0 0 rgba(255,196,0,.0),  0 4px 16px rgba(0,0,0,.35); }
-  50%      { box-shadow:0 0 0 8px rgba(255,196,0,.18), 0 4px 20px rgba(0,0,0,.45); }
+/* النبض عبر opacity لطبقة ::before (تُحرَّك على GPU) بدل تحريك box-shadow
+   الذي يُعيد رسم الزر في كل إطار */
+@keyframes haloPulse {
+  0%,100% { opacity:0; }
+  50%     { opacity:1; }
 }
 .header-discount-btn {
   display:flex; align-items:center; gap:9px;
@@ -257,9 +276,16 @@ html,body {
   background:linear-gradient(135deg,#c8960a 0%,#f5c200 50%,#c8960a 100%);
   border-radius:var(--rp);
   cursor:pointer;
-  animation:discountPulse 2.4s ease-in-out infinite;
+  position:relative;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
   flex-shrink:0;
   transition:transform .15s;
+}
+.header-discount-btn::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  box-shadow:0 0 0 8px rgba(255,196,0,.18), 0 4px 20px rgba(0,0,0,.45);
+  opacity:0; will-change:opacity;
+  animation:haloPulse 2.4s ease-in-out infinite;
 }
 .header-discount-btn:active { transform:scale(.93); }
 .header-discount-btn i  { font-size:20px; color:#3d2700; }
@@ -267,18 +293,21 @@ html,body {
 .hdb-label { font-size:19px; font-weight:800; color:#3d2700; }
 
 /* ── زر الألعاب "مَن يدفع؟" ── */
-@keyframes gamesGlow {
-  0%,100% { box-shadow:0 0 0 0 rgba(59,130,246,0), 0 4px 16px rgba(0,0,0,.35); }
-  50%     { box-shadow:0 0 0 8px rgba(59,130,246,.16), 0 4px 20px rgba(0,0,0,.45); }
-}
 .header-games-btn {
   display:flex; align-items:center; gap:9px;
   padding:10px 22px 10px 18px;
   background:linear-gradient(135deg,#2563eb 0%,#3b82f6 50%,#1d4ed8 100%);
   border-radius:var(--rp);
   cursor:pointer; flex-shrink:0;
-  animation:gamesGlow 2.6s ease-in-out infinite;
+  position:relative;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
   transition:transform .15s;
+}
+.header-games-btn::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  box-shadow:0 0 0 8px rgba(59,130,246,.16), 0 4px 20px rgba(0,0,0,.45);
+  opacity:0; will-change:opacity;
+  animation:haloPulse 2.6s ease-in-out infinite;
 }
 .header-games-btn:active { transform:scale(.93); }
 .header-games-btn i { font-size:22px; color:#fff; }
@@ -356,7 +385,6 @@ html,body {
   border:1px solid var(--b0);
   position:relative;
   transition:border-color .5s ease, box-shadow .5s ease, background .5s ease;
-  will-change:border-color, box-shadow, background;
 }
 
 /* right accent stripe */
@@ -372,8 +400,9 @@ html,body {
 .item-img-wrap {
   width:104px; height:104px; border-radius:var(--rm);
   overflow:hidden; flex-shrink:0; background:var(--s3);
-  transition:width .5s ease, height .5s ease, box-shadow .5s ease;
-  will-change:width, height;
+  /* التكبير عبر transform (بلا إعادة تخطيط) بدل تغيير width/height أثناء
+     السكرول — كان يحرّك كل البطاقات تحته فيهتز السكرول */
+  transition:transform .5s ease, box-shadow .5s ease;
 }
 .item-img-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
 .item-img-placeholder {
@@ -386,7 +415,7 @@ html,body {
 .item-info { flex:1; min-width:0; }
 .item-name-ar {
   font-size:24px; font-weight:800; color:var(--white); line-height:1.2;
-  transition:font-size .5s ease, color .5s ease;
+  transition:color .5s ease;   /* تغيير الحجم فوري — لا تحريك لـ font-size (يعيد التخطيط كل إطار) */
 }
 .item-name-en {
   font-family:var(--en); font-size:15px; color:var(--gray);
@@ -419,7 +448,7 @@ html,body {
 .cal-badge i { color:#f0a500; font-size:13px; }
 
 /* price */
-.item-price-wrap { flex-shrink:0; }
+.item-price-wrap { flex-shrink:0; display:flex; align-items:stretch; gap:10px; }
 .item-price-badge {
   background:var(--red); color:#fff;
   border-radius:var(--rp); padding:10px 24px; text-align:center;
@@ -431,6 +460,25 @@ html,body {
   line-height:1; display:block;
 }
 .item-price-cur { font-size:13px; opacity:.82; display:block; text-align:center; }
+
+/* ── دائرة سعر الوجبة — بجانب دائرة سعر البرجر وبنفس حجمها ── */
+.item-meal-badge {
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  padding:8px 18px;
+  background:linear-gradient(150deg,#d4283a,#8f1521);
+  border:1.5px solid rgba(255,255,255,.18);
+}
+.item-meal-label {
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:var(--ar); font-size:14px; font-weight:700; line-height:1;
+  color:rgba(255,255,255,.96); white-space:nowrap;
+}
+.item-meal-ico { width:17px; height:17px; display:inline-flex; flex-shrink:0; }
+.item-meal-ico svg { width:17px; height:17px; display:block; }
+.item-meal-amount { display:inline-flex; align-items:baseline; gap:5px; }
+.item-meal-amount .item-price-num { font-size:26px; display:inline; }
+.item-meal-amount .item-price-cur { font-size:12px; display:inline; }
+.menu-item.highlighted .item-meal-badge { box-shadow:0 4px 16px rgba(190,30,45,.65); }
 
 /* item number */
 .item-num {
@@ -445,22 +493,25 @@ html,body {
   scroll-margin: 20px;
   border-color:var(--red);
   background:linear-gradient(120deg,#190004 0%,var(--s2) 100%);
-  box-shadow:0 0 0 1px var(--red), 0 5px 26px var(--red-glow);
-  animation:glow-pulse 2.2s ease-in-out infinite, highlight-in .5s ease forwards;
+  box-shadow:0 0 0 1px var(--red), 0 5px 22px var(--red-glow);
+  animation:highlight-in .5s ease forwards;
+}
+/* نبض التوهّج: طبقة ::before تتغيّر شفافيتها فقط (GPU) بدل تحريك box-shadow */
+.menu-item.highlighted::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  box-shadow:0 8px 34px rgba(190,30,45,.55);
+  opacity:0; will-change:opacity;
+  animation:haloPulse 2.2s ease-in-out infinite;
 }
 .menu-item.highlighted::after { opacity:1; }
 .menu-item.highlighted .item-img-wrap {
-  width:118px; height:118px;
+  transform:scale(1.135);   /* ≈ 118px */
   box-shadow:0 4px 14px rgba(190,30,45,.45);
 }
 .menu-item.highlighted .item-name-ar { font-size:27px; }
 .menu-item.highlighted .item-price-badge { box-shadow:0 4px 16px rgba(190,30,45,.65); }
 .menu-item.highlighted .item-num { color:var(--red); opacity:1; }
 
-@keyframes glow-pulse {
-  0%,100% { box-shadow:0 0 0 1px var(--red), 0 5px 22px var(--red-glow); }
-  50%      { box-shadow:0 0 0 1px var(--red), 0 8px 34px rgba(190,30,45,.55); }
-}
 
 /* Smooth entrance when item first becomes highlighted */
 @keyframes highlight-in {
@@ -493,6 +544,42 @@ html,body {
   transition:width linear;
 }
 .scroll-cat-label { font-size:16px; font-weight:700; color:var(--red); white-space:nowrap; }
+
+/* ════════════════════════════════════════════════
+   MAINTENANCE MODE SCREEN
+════════════════════════════════════════════════ */
+#maintenance-screen {
+  position:fixed; inset:0; z-index:9999;
+  background:rgba(7,7,7,.97);
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.maintenance-content {
+  display:flex; flex-direction:column; align-items:center; gap:28px;
+  text-align:center; padding:40px;
+}
+.maintenance-icon {
+  width:100px; height:100px; border-radius:50%;
+  background:rgba(190,30,45,.12); border:2px solid rgba(190,30,45,.3);
+  display:flex; align-items:center; justify-content:center;
+  animation:maintenance-pulse 2.5s ease-in-out infinite;
+}
+.maintenance-icon i { font-size:40px; color:var(--red); }
+.maintenance-msg {
+  font-family:'Tajawal',sans-serif;
+  font-size:32px; font-weight:800; color:#fff; line-height:1.4;
+  max-width:600px;
+}
+.maintenance-sub {
+  font-size:18px; color:rgba(255,255,255,.4);
+  font-family:'Tajawal',sans-serif;
+}
+@keyframes maintenance-pulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(190,30,45,.4); }
+  50%      { box-shadow:0 0 0 20px rgba(190,30,45,0); }
+}
 
 /* ── Footer ── */
 .menu-footer {
@@ -691,6 +778,33 @@ html,body {
 }
 .product-overlay-price-cur { font-size:21px; font-weight:400; color:rgba(255,255,255,.82); }
 
+/* ── سعر الوجبة — نفس تصميم بطاقة السعر + أيقونة بطاطس وأيقونة مشروب ── */
+.product-overlay-price-row {
+  display:flex; align-items:stretch; flex-wrap:wrap; gap:14px;
+}
+/* نفس البادينغ ونفس حجم رقم السعر ⇒ ارتفاع البطاقتين متطابق تماماً */
+.product-overlay-meal-wrap {
+  align-items:center; gap:14px; padding:15px 26px 15px 18px;
+}
+.overlay-meal-amount { display:inline-flex; align-items:baseline; gap:9px; }
+.overlay-meal-tag {
+  display:inline-flex; align-items:center; gap:7px;
+  font-family:var(--ar); font-size:20px; font-weight:700;
+  color:rgba(255,255,255,.95);
+  background:rgba(0,0,0,.22); border:1.5px solid rgba(255,255,255,.22);
+  border-radius:100px; padding:5px 16px; white-space:nowrap;
+}
+.overlay-meal-tag i { font-size:16px; }
+.overlay-meal-divider {
+  width:2px; height:46px; border-radius:2px; background:rgba(255,255,255,.28);
+}
+.overlay-meal-ico {
+  width:50px; height:50px; border-radius:50%; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.22); border:1.5px solid rgba(255,255,255,.22);
+}
+.overlay-meal-ico svg { width:34px; height:34px; display:block; }
+
 /* ── مكونات المنتج في الـ overlay ── */
 .product-overlay-ingredients {
   display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;
@@ -781,6 +895,47 @@ html,body {
 }
 .header-qrmenu-btn i    { font-size:22px; }
 .header-qrmenu-btn:active { transform:scale(.93); background:rgba(20,184,166,.22); }
+
+/* ── زر ترجمة المنيو (عربي ⇄ إنجليزي) ── */
+.header-lang-btn {
+  display:flex; align-items:center; justify-content:center;
+  width:62px; height:62px; border-radius:var(--rp);
+  background:rgba(124,58,237,.16);
+  border:1.5px solid rgba(167,139,250,.38);
+  color:rgba(196,181,253,.92);
+  flex-shrink:0; cursor:pointer;
+  transition:background .22s, border-color .22s, color .22s, transform .15s;
+}
+.header-lang-btn i { font-size:24px; }
+.header-lang-btn:active { transform:scale(.93); }
+.header-lang-btn.lang-active {
+  background:rgba(124,58,237,.32);
+  border-color:rgba(167,139,250,.65);
+  color:#fff;
+}
+
+/* ── وضع الإنجليزي — محاذاة النصوص المترجمة الطويلة ── */
+body.lang-en .item-desc,
+body.lang-en .item-removable-note,
+body.lang-en .item-sauce-note,
+body.lang-en .product-overlay-desc {
+  direction:ltr; text-align:right;
+}
+
+/* ── وضع الإنجليزي — الاسم الإنجليزي يصبح الاسم الأساسي ── */
+body.lang-en .item-name-ar,
+body.lang-en .product-overlay-name-ar {
+  display:none;
+}
+body.lang-en .item-name-en {
+  font-size:24px; font-weight:800; color:var(--white);
+  text-transform:none; letter-spacing:normal; margin-top:0;
+}
+body.lang-en .product-overlay-name-en {
+  font-size:56px; font-weight:900; color:var(--white);
+  text-transform:none; letter-spacing:normal; margin-top:0;
+  text-shadow:0 4px 22px rgba(0,0,0,.95);
+}
 
 /* ════════════════════════════════════════════════════════
    QR MENU OVERLAY — يغطي لوحة الشرائح
@@ -959,6 +1114,49 @@ html,body {
   transform-origin:right;
   transition:transform linear;
 }
+
+/* ════════════════════════════════════════════════════════
+   NEW PRODUCTS OVERLAY — يغطي الشاشة كاملة فوق المنيو
+════════════════════════════════════════════════════════ */
+.new-products-overlay {
+  position:fixed; inset:0; z-index:9500;
+  display:none;               /* JS يضبطه flex عند التفعيل */
+  align-items:center; justify-content:center;
+  background:#000;
+  cursor:pointer;
+  animation:npFadeIn .45s ease;
+}
+.new-products-overlay.closing { animation:npFadeOut .30s ease forwards; }
+
+@keyframes npFadeIn  { from{opacity:0} to{opacity:1} }
+@keyframes npFadeOut { from{opacity:1} to{opacity:0} }
+
+.new-products-img {
+  width:100%; height:100%; object-fit:cover; display:block;
+  pointer-events:none;
+}
+
+/* الزر العائم — يعيد العميل للمنيو، بهوية المشروع (أحمر + توهج) */
+.new-products-menu-btn {
+  position:absolute; bottom:44px; left:44px; z-index:2;
+  display:flex; align-items:center; gap:12px;
+  padding:18px 32px; border-radius:100px;
+  background:linear-gradient(135deg,var(--red-lt),var(--red) 55%,var(--red-dk));
+  border:1.5px solid rgba(255,255,255,.22);
+  color:#fff; font-family:var(--ar); font-size:22px; font-weight:800;
+  box-shadow:0 10px 34px rgba(0,0,0,.55), 0 0 0 6px rgba(190,30,45,.16),
+             inset 0 1px 0 rgba(255,255,255,.20);
+  transition:transform .15s;
+}
+.new-products-menu-btn::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  box-shadow:0 0 0 14px rgba(190,30,45,.14);
+  opacity:0; will-change:opacity;
+  animation:haloPulse 2.2s ease-in-out infinite;
+}
+.new-products-menu-btn i { font-size:24px; }
+.new-products-menu-btn:active { transform:scale(.93); }
+
 
 /* ════════════════════════════════════════════════════════
    REVIEW / DISCOUNT OVERLAY

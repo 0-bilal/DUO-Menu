@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="er" dir="rtl">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
   <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png">
-  <link rel="icon" type="image/svg+xml" href="icons/logo.ico">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 
   <!-- ══ Fonts & Icons ══ -->
@@ -60,7 +60,10 @@
           </button>
           <button class="header-qrmenu-btn" id="header-qrmenu-btn" onclick="showQRMenuOverlay()">
             <i class="fa-solid fa-qrcode"></i>
-            <span class="hqb-label">منيو الجوال</span>
+
+          </button>
+          <button class="header-lang-btn" id="header-lang-btn" onclick="toggleMenuLanguage()" aria-label="Translate menu / ترجمة المنيو">
+            <i class="fa-solid fa-language"></i>
           </button>
           <button class="header-discount-btn" id="store-notif-btn" onclick="showReviewOverlay()">
             <i class="fa-solid fa-tags"></i>
@@ -68,8 +71,8 @@
             <span class="hdb-label">خصم</span>
           </button>
           <div class="header-phone" id="header-phone-row">
-            <i class="fa-solid fa-phone"></i>
             <span id="fab-phone-value">----</span>
+            <i class="fa-solid fa-phone"></i>
           </div>
         </div>
       </div>
@@ -87,21 +90,6 @@
       <!-- Rendered by main.js -->
     </div>
 
-    <!-- Status bar -->
-    <div class="scroll-status-bar">
-      <div class="scroll-item-indicator">
-        <i class="fa-solid fa-circle-play"></i>
-        <span>عرض</span>
-        <strong id="scroll-cur">1</strong>
-        <span>من</span>
-        <strong id="scroll-total">1</strong>
-      </div>
-      <div class="scroll-timer-track">
-        <div id="scroll-timer-fill" class="scroll-timer-fill"></div>
-      </div>
-      <div id="scroll-cat-label" class="scroll-cat-label">—</div>
-    </div>
-
     <!-- Footer -->
     <div class="menu-footer">
       <div class="tax-note">
@@ -113,7 +101,7 @@
         <span id="wifi-name" class="wifi-name">—</span>
       </div>
       <div class="qb-credit">
-        <span class="qb-brand">QB 15v</span>
+        <span class="qb-brand">QB 26v</span>
         <span class="qb-sep">|</span>
         <span class="qb-text">تطوير بلال الخواجة</span>
         <span class="qb-sep" id="battery-sep" style="display:none">|</span>
@@ -168,7 +156,7 @@
         <div id="product-overlay-cal" class="product-overlay-cal-badge" style="display:none">
           <i class="fa-solid fa-fire-flame-curved"></i>
           <span id="product-overlay-cal-num"></span>
-          <span>سعرة حرارية</span>
+          <span id="product-overlay-cal-unit">سعرة حرارية</span>
         </div>
 
         <div id="product-overlay-name-ar" class="product-overlay-name-ar"></div>
@@ -182,14 +170,28 @@
 
         <!-- اختيار الصوص -->
         <div id="product-overlay-sauce" class="product-overlay-sauce-picker" style="display:none">
-          <span class="sauce-picker-label"><i class="fa-solid fa-bottle-droplet"></i> اختر الصوص</span>
+          <span class="sauce-picker-label" id="product-overlay-sauce-label"><i class="fa-solid fa-bottle-droplet"></i> اختر الصوص</span>
           <div id="product-overlay-sauce-btns" class="sauce-picker-btns"></div>
         </div>
 
-        <!-- السعر -->
-        <div id="product-overlay-price-wrap" class="product-overlay-price-wrap" style="display:none">
-          <span id="product-overlay-price-num" class="product-overlay-price-num"></span>
-          <span class="product-overlay-price-cur">ريال</span>
+        <!-- السعر + سعر الوجبة -->
+        <div class="product-overlay-price-row">
+          <div id="product-overlay-price-wrap" class="product-overlay-price-wrap" style="display:none">
+            <span id="product-overlay-price-num" class="product-overlay-price-num"></span>
+            <span class="product-overlay-price-cur" id="product-overlay-price-cur">ريال</span>
+          </div>
+
+          <!-- سعر الوجبة — نفس تصميم السعر + أيقونة بطاطس وأيقونة مشروب -->
+          <div id="product-overlay-meal-wrap" class="product-overlay-price-wrap product-overlay-meal-wrap" style="display:none">
+            <span class="overlay-meal-tag"><i class="fa-solid fa-utensils"></i><span id="product-overlay-meal-label">وجبة</span></span>
+            <span class="overlay-meal-amount">
+              <span id="product-overlay-meal-num" class="product-overlay-price-num"></span>
+              <span class="product-overlay-price-cur" id="product-overlay-meal-cur">ريال</span>
+            </span>
+            <span class="overlay-meal-divider" aria-hidden="true"></span>
+            <span class="overlay-meal-ico" id="product-overlay-meal-fries"></span>
+            <span class="overlay-meal-ico" id="product-overlay-meal-drink"></span>
+          </div>
         </div>
 
       </div>
@@ -373,6 +375,15 @@
 
 </div><!-- /screen -->
 
+<!-- ══ صورة المنتجات الجديدة — غطاء كامل الشاشة فوق المنيو ══ -->
+<div id="new-products-overlay" class="new-products-overlay" style="display:none" onclick="dismissNewProductsOverlay()">
+  <img id="new-products-img" class="new-products-img" src="images/new-products/new.jpg" alt="منتجات جديدة">
+  <button class="new-products-menu-btn" onclick="event.stopPropagation();dismissNewProductsOverlay()">
+    <i class="fa-solid fa-utensils"></i>
+    <span>عرض المنيو</span>
+  </button>
+</div>
+
 <!-- ══ Dev: Password Modal ══ -->
 <div id="dev-pwd-modal" style="display:none;position:fixed;inset:0;z-index:99990;
      background:rgba(0,0,0,.90);align-items:center;justify-content:center;
@@ -526,12 +537,6 @@
     </div>
 
   </div><!-- /vx-stage -->
-
-  <!-- مؤشر التصفح اليدوي -->
-  <div class="vx-paused" id="vx-paused">
-    <i class="fa-solid fa-hand-pointer"></i><span>تصفح يدوي</span>
-  </div>
-
   <!-- ── الفوتر ── -->
   <div class="vx-footer">
     <div class="vx-foot-tax">
@@ -540,7 +545,7 @@
     </div>
 
     <div class="vx-foot-right">
-      <span>QB 15v</span>
+      <span>QB 26v</span>
       <span class="vx-sep">|</span>
       <span>تطوير بلال الخواجة</span>
       <span class="vx-sep" id="vl-battery-sep" style="display:none">|</span>
@@ -700,10 +705,28 @@
 
 <!-- ══ PWA Service Worker Registration ══ -->
 <script>
+  /* إعادة التحميل بعد 60 ثانية بلا أي لمس، وبلا نافذة/لعبة مفتوحة */
+  var _lastUserActivity = Date.now();
+  ['touchstart', 'pointerdown', 'wheel', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, function () { _lastUserActivity = Date.now(); }, { passive: true, capture: true });
+  });
+  function _reloadWhenIdle() {
+    var IDLE_MS = 60000;
+    var t = setInterval(function () {
+      var busy = document.querySelector(
+        '#product-overlay.active, #review-overlay.active, #qrmenu-overlay.active, ' +
+        '#games-hub.active, #game-overlay.active, #xo-overlay.active');
+      if (!busy && Date.now() - _lastUserActivity >= IDLE_MS) {
+        clearInterval(t);
+        window.location.reload();
+      }
+    }, 5000);
+  }
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
+        .register('sw.js', { scope: './' })
         .then(reg => {
           console.log('[PWA] Service Worker registered:', reg.scope);
 
@@ -712,12 +735,11 @@
             const worker = reg.installing;
             worker.addEventListener('statechange', () => {
               if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[PWA] New version available — reload to update.');
-                // For a kiosk/signage display, auto-reload after a delay
-                setTimeout(() => {
-                  worker.postMessage('SKIP_WAITING');
-                  window.location.reload();
-                }, 5000);
+                console.log('[PWA] New version available — reload when idle.');
+                worker.postMessage('SKIP_WAITING');
+                // شاشة عرض: أعد التحميل لتطبيق التحديث — لكن فقط عندما لا يستخدمها
+                // أحد (كانت تُعاد بعد 5 ثوانٍ حتى لو كان العميل يتصفح المنيو)
+                _reloadWhenIdle();
               }
             });
           });

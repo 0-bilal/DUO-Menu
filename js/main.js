@@ -6,24 +6,196 @@
  * - FAB: social always visible; phone & hours toggle on tap
  */
 
-/* ══ منع الزوم بالأصبعين (Pinch-to-Zoom) ══ */
-document.addEventListener('touchmove', e => {
-  if (e.touches.length > 1) e.preventDefault();
-}, { passive: false });
-
+/* ══ منع الزوم بالأصبعين (Pinch-to-Zoom) ══
+   ملاحظة: لا نستخدم مستمع touchmove غير سلبي (passive:false) على الصفحة —
+   كان يجبر Safari على انتظار JavaScript قبل كل حركة سكرول فيتجمّد السكرول
+   على الآيباد عند انشغال المعالج. أحداث gesture* + touch-action في CSS تكفي. */
 document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 document.addEventListener('gestureend',    e => e.preventDefault(), { passive: false });
+
+/* ══ منع قائمة الضغط المطوّل (نسخ / مشاركة / بحث جوجل / حفظ الصورة) ══ */
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('input, textarea, [contenteditable="true"]')) e.preventDefault();
+});
+document.addEventListener('selectstart', e => {
+  if (!e.target.closest?.('input, textarea, [contenteditable="true"]')) e.preventDefault();
+});
+document.addEventListener('dragstart', e => e.preventDefault());
 /* ══════════════════════════════════════════ */
 
 /* ── Config ── */
-const ITEM_DURATION   = 3500;  // ms per highlight step
+const ITEM_DURATION   = 3500;  // ms per highlight step (قيمة افتراضية)
 const HIGHLIGHT_DELAY = 80;    // ms to let CSS layout settle before centering
-const PAUSE_DURATION  = 12000; // ms to pause auto-scroll after user interaction
+const PAUSE_DURATION  = 12000; // ms to pause auto-scroll after user interaction (قيمة افتراضية)
+
+/* ── مفاتيح localStorage الخاصة بإعدادات السكرول الديناميكية ── */
+const LS_AUTO_SCROLL          = 'duo_auto_scroll';
+const LS_ITEM_DURATION_KEY    = 'duo_item_duration';
+const LS_PAUSE_DURATION_KEY   = 'duo_pause_duration';
+const LS_OVERLAY_DURATION_KEY = 'duo_overlay_duration';
+
+/* ── مفاتيح إعدادات Overlay وCrossfade ── */
+const LS_CROSSFADE_DUR    = 'duo_crossfade_dur';      // ms — تبديل الصورة
+const LS_OV_CHANGE_DUR    = 'duo_overlay_change_dur'; // ms — تبديل المنتج داخل overlay
+const LS_OV_CLOSE_DUR     = 'duo_overlay_close_dur';  // ms — إغلاق overlay
+
+/* ── مفاتيح الصيانة ومدة الشرائح ── */
+const LS_MAINTENANCE      = 'duo_maintenance';         // 'true'|'false'
+const LS_MAINTENANCE_MSG  = 'duo_maintenance_msg';     // نص رسالة الصيانة
+const LS_SLIDE_DURATIONS  = 'duo_slide_durations';     // JSON {idx: ms}
+const LS_PINNED_SLIDE     = 'duo_pinned_slide';        // رقم الشريحة المثبتة أو null
+
+/* ── دوال قراءة الإعدادات (تُستدعى لحظياً لضمان أحدث قيمة) ── */
+function _getItemDuration()    { return parseInt(localStorage.getItem(LS_ITEM_DURATION_KEY)    || String(ITEM_DURATION),    10); }
+function _getPauseDuration()   { return parseInt(localStorage.getItem(LS_PAUSE_DURATION_KEY)   || String(PAUSE_DURATION),   10); }
+function _getOverlayDuration() { return parseInt(localStorage.getItem(LS_OVERLAY_DURATION_KEY) || '8000',                   10); }
+function _isAutoScrollOn()     { const v = localStorage.getItem(LS_AUTO_SCROLL); return v === null ? true : v === 'true'; }
+function _getCrossfadeDur()    { return parseInt(localStorage.getItem(LS_CROSSFADE_DUR)    || '520',  10); }
+function _getOvChangeDur()     { return parseInt(localStorage.getItem(LS_OV_CHANGE_DUR)    || '260',  10); }
+function _getOvCloseDur()      { return parseInt(localStorage.getItem(LS_OV_CLOSE_DUR)     || '430',  10); }
+function _getSlideDur(idx) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_SLIDE_DURATIONS) || '{}');
+    const v = saved[String(idx)];
+    return (v !== undefined) ? parseInt(v, 10) : (slides[idx]?.duration ?? 5000);
+  } catch { return slides[idx]?.duration ?? 5000; }
+}
 
 /* ── Helpers ── */
 const $ = id => document.getElementById(id);
 const setText = (id, v) => { const e=$(id); if(e) e.textContent=v; };
+
+/* ════════════════════════════════════════════════════════
+   لغة المنيو — ترجمة فورية من العربية إلى الإنجليزية
+════════════════════════════════════════════════════════ */
+const LS_MENU_LANG = 'duo_menu_lang';
+let menuLang = (localStorage.getItem(LS_MENU_LANG) === 'en') ? 'en' : 'ar';
+
+const _UI_STRINGS = {
+  calUnit:     { ar: 'سعرة',        en: 'kcal' },
+  calUnitFull: { ar: 'سعرة حرارية', en: 'kcal' },
+  currency:    { ar: 'ريال',        en: 'SAR' },
+  contains:    { ar: 'يحتوي على',   en: 'Contains' },
+  removable:   { ar: 'يمكن إزالته', en: 'removable' },
+  chooseColon: { ar: 'اختر: ',      en: 'Choose: ' },
+  or:          { ar: 'أو',          en: 'or' },
+  chooseSauce: { ar: 'اختر الصوص',  en: 'Choose Sauce' },
+  meal:        { ar: 'وجبة',        en: 'Meal' },
+};
+function _t(key) {
+  const row = _UI_STRINGS[key];
+  return row ? (row[menuLang] || row.ar) : '';
+}
+const _tCat     = cat  => menuLang === 'en' ? (cat.nameEn || cat.nameAr) : cat.nameAr;
+const _tDesc    = item => menuLang === 'en' ? (item.descriptionEn || item.descriptionAr || '') : (item.descriptionAr || '');
+const _tIngName = ing  => menuLang === 'en' ? (ing.nameEn || ing.nameAr) : ing.nameAr;
+const _tSauceAt = (item, i) => menuLang === 'en' ? (item.sauceOptionsEn?.[i] || item.sauceOptions[i]) : item.sauceOptions[i];
+const _tVariantAt = (item, i) => menuLang === 'en' ? (item.variantsEn?.[i] || item.variants[i]) : item.variants[i];
+
+/* ── أيقونتا الوجبة: بطاطس ومشروب (SVG داخلي) ── */
+const MEAL_FRIES_SVG = `
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="7.1" y="3.2" width="2.2" height="8" rx="1.1" fill="#F7C948" transform="rotate(-13 8.2 7.2)"/>
+    <rect x="10.9" y="1.9" width="2.2" height="9.3" rx="1.1" fill="#FFD966"/>
+    <rect x="14.7" y="3.2" width="2.2" height="8" rx="1.1" fill="#F7C948" transform="rotate(13 15.8 7.2)"/>
+    <path d="M4.6 10h14.8l-1.5 9.3a2.4 2.4 0 0 1-2.4 2h-7a2.4 2.4 0 0 1-2.4-2L4.6 10Z" fill="#fff"/>
+    <path d="M6.2 13.4h11.6" stroke="#be1e2d" stroke-width="1.7" stroke-linecap="round"/>
+  </svg>`;
+
+const MEAL_DRINK_SVG = `
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M13.6 2.8 11.6 8.2" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+    <rect x="4.7" y="6.6" width="14.6" height="3.1" rx="1.4" fill="#fff"/>
+    <path d="M6.1 10.6h11.8l-1.2 9a2.3 2.3 0 0 1-2.3 2h-4.8a2.3 2.3 0 0 1-2.3-2l-1.2-9Z" fill="#fff"/>
+    <path d="M7.4 14.2h9.2" stroke="#be1e2d" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>`;
+
+/* يملأ أيقونتي الوجبة مرة واحدة */
+function _initMealIcons() {
+  const f = $('product-overlay-meal-fries');
+  const d = $('product-overlay-meal-drink');
+  if (f && !f.innerHTML.trim()) f.innerHTML = MEAL_FRIES_SVG;
+  if (d && !d.innerHTML.trim()) d.innerHTML = MEAL_DRINK_SVG;
+}
+
+let _currentOverlayItem = null;
+
+function toggleMenuLanguage() {
+  menuLang = (menuLang === 'ar') ? 'en' : 'ar';
+  localStorage.setItem(LS_MENU_LANG, menuLang);
+  applyMenuLanguage();
+}
+
+function applyMenuLanguage() {
+  document.body.classList.toggle('lang-en', menuLang === 'en');
+  const btn = $('header-lang-btn');
+  if (btn) btn.classList.toggle('lang-active', menuLang === 'en');
+
+  setText('rest-tagline', menuLang === 'en' ? (restaurantInfo.taglineEn || restaurantInfo.taglineAr) : restaurantInfo.taglineAr);
+  setText('tax-note-text', menuLang === 'en' ? (restaurantInfo.taxNoteEn || restaurantInfo.taxNote) : restaurantInfo.taxNote);
+
+  const wasIdx = curIdx;
+  renderCategoryTabs();
+  renderAllCategories();
+  applyDevSettings();   // إعادة تطبيق الإخفاء/التخطّي — وإلا تظهر المنتجات المخفية بعد تبديل اللغة
+  fixScrollablePadding();
+  if (allItemEls.length) highlightItem(wasIdx);
+
+  if (_currentOverlayItem) _refreshOverlayLanguage();
+}
+
+/* ── تحديث نصوص الـ overlay الحالي دون إعادة تحميل الصورة ── */
+function _refreshOverlayLanguage() {
+  const item = _currentOverlayItem;
+  if (!item) return;
+
+  const descEl = $('product-overlay-desc');
+  if (descEl) {
+    descEl.textContent   = _tDesc(item);
+    descEl.style.display = _tDesc(item) ? 'block' : 'none';
+  }
+
+  const _ovCat = menuCategories.find(c => c.items.includes(item));
+  const obEl = $('product-overlay-badge');
+  if (_ovCat && obEl) {
+    const ob = _getBadge(_ovCat.id, item.nameAr);
+    obEl.innerHTML = ob ? _badgeHTML(ob) : '';
+  }
+
+  const ingredientsEl = $('product-overlay-ingredients');
+  if (ingredientsEl && item.ingredients?.length) {
+    ingredientsEl.innerHTML = item.ingredients.map(ing => ing.removable
+      ? `<span class="ingredient-tag ingredient-tag--removable">
+           <i class="fa-solid fa-circle-minus"></i> ${_tIngName(ing)}
+           <span class="ingredient-tag-hint">${_t('removable')}</span>
+         </span>`
+      : `<span class="ingredient-tag">${_tIngName(ing)}</span>`
+    ).join('');
+  }
+
+  const variantsEl = $('product-overlay-variants');
+  if (variantsEl && item.variants?.length) {
+    variantsEl.querySelectorAll('.overlay-variant-tag').forEach((el, i) => {
+      el.textContent = _tVariantAt(item, i);
+    });
+  }
+
+  const sauceBtns = $('product-overlay-sauce-btns');
+  if (sauceBtns && item.sauceOptions?.length) {
+    sauceBtns.querySelectorAll('.sauce-btn').forEach((btn, i) => {
+      btn.textContent = _tSauceAt(item, i);
+    });
+  }
+
+  setText('product-overlay-cal-unit', _t('calUnitFull'));
+  setText('product-overlay-price-cur', _t('currency'));
+  setText('product-overlay-meal-cur',  _t('currency'));
+  setText('product-overlay-meal-label', _t('meal'));
+
+  const sauceLabel = $('product-overlay-sauce-label');
+  if (sauceLabel) sauceLabel.innerHTML = `<i class="fa-solid fa-bottle-droplet"></i> ${_t('chooseSauce')}`;
+}
 
 /* ════════════════════════════════════════════════════════
    RESTAURANT INFO
@@ -31,7 +203,7 @@ const setText = (id, v) => { const e=$(id); if(e) e.textContent=v; };
 function renderRestaurantInfo() {
   setText('rest-name-ar',    restaurantInfo.nameAr);
   setText('rest-name-en',    restaurantInfo.nameEn);
-  setText('rest-tagline',    restaurantInfo.taglineAr);
+  setText('rest-tagline',    menuLang === 'en' ? (restaurantInfo.taglineEn || restaurantInfo.taglineAr) : restaurantInfo.taglineAr);
   setText('review-rest-name', restaurantInfo.nameAr);
 
   // Logo
@@ -44,7 +216,7 @@ function renderRestaurantInfo() {
   }
 
   // Footer
-  setText('tax-note-text', restaurantInfo.taxNote);
+  setText('tax-note-text', menuLang === 'en' ? (restaurantInfo.taxNoteEn || restaurantInfo.taxNote) : restaurantInfo.taxNote);
   const wifiSec = $('wifi-section');
   if (wifiSec) {
     if (restaurantInfo.wifi) { setText('wifi-name', restaurantInfo.wifi); wifiSec.style.display='flex'; }
@@ -79,7 +251,7 @@ function renderCategoryTabs() {
     btn.dataset.id = cat.id;
     btn.innerHTML  =
       `<i class="fa-solid ${cat.icon}"></i>
-       <span class="cat-tab-label">${cat.nameAr}</span>`;
+       <span class="cat-tab-label">${_tCat(cat)}</span>`;
     btn.addEventListener('click', () => scrollToSection(cat.id));
     wrap.appendChild(btn);
   });
@@ -119,7 +291,7 @@ function renderAllCategories() {
     heading.dataset.cat = cat.id;
     heading.innerHTML =
       `<i class="fa-solid ${cat.icon}"></i>
-       <span class="section-heading-text">${cat.nameAr}</span>
+       <span class="section-heading-text">${_tCat(cat)}</span>
        <div class="section-heading-line"></div>`;
     area.appendChild(heading);
 
@@ -134,7 +306,7 @@ function renderAllCategories() {
         <span class="item-num">0${i + 1}</span>
         <div class="item-img-wrap">
           ${item.image
-            ? `<img src="${item.image}" alt="${item.nameAr}"
+            ? `<img src="${item.image}" alt="${item.nameAr}" decoding="async"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
             : ''}
           <div class="item-img-placeholder"${item.image ? ' style="display:none"' : ''}>
@@ -145,33 +317,45 @@ function renderAllCategories() {
           ${badge ? _badgeHTML(badge) : ''}
           <div class="item-name-ar">${item.nameAr}</div>
           <div class="item-name-en">${item.nameEn}</div>
-          ${item.descriptionAr
-            ? `<div class="item-desc">${item.descriptionAr}</div>` : ''}
+          ${_tDesc(item)
+            ? `<div class="item-desc">${_tDesc(item)}</div>` : ''}
           ${item.variants?.length
             ? `<div class="item-variants">
-                 ${item.variants.map(v => `<span class="item-variant-tag" data-vkey="${_devItemKey(cat.id, item.nameAr)}||${v}">${v}</span>`).join('')}
+                 ${item.variants.map((v, vi) => `<span class="item-variant-tag" data-vkey="${_devItemKey(cat.id, item.nameAr)}||${v}">${_tVariantAt(item, vi)}</span>`).join('')}
                </div>` : ''}
           ${item.ingredients?.some(i => i.removable)
             ? `<div class="item-removable-note">
                  <i class="fa-solid fa-circle-info"></i>
-                 يحتوي على ${item.ingredients.filter(i => i.removable).map(i => i.nameAr).join('، ')} — يمكن إزالته
+                 ${_t('contains')} ${item.ingredients.filter(i => i.removable).map(i => _tIngName(i)).join(menuLang === 'en' ? ', ' : '، ')} — ${_t('removable')}
                </div>` : ''}
           ${item.sauceOptions?.length
             ? `<div class="item-sauce-note">
                  <i class="fa-solid fa-bottle-droplet"></i>
-                 اختر: ${item.sauceOptions.join(' أو ')}
+                 ${_t('chooseColon')}${item.sauceOptions.map((s, si) => _tSauceAt(item, si)).join(` ${_t('or')} `)}
                </div>` : ''}
           <div class="item-meta">
             ${item.calories
               ? `<span class="cal-badge">
-                   <i class="fa-solid fa-fire-flame-curved"></i>&thinsp;${item.calories} سعرة
+                   <i class="fa-solid fa-fire-flame-curved"></i>&thinsp;${item.calories} ${_t('calUnit')}
                  </span>` : ''}
           </div>
         </div>
         <div class="item-price-wrap">
+          ${item.mealPrice != null ? `
+            <div class="item-price-badge item-meal-badge"${_devMealPriceHidden ? ' style="display:none"' : ''}>
+              <span class="item-meal-label">
+                <span class="item-meal-ico">${MEAL_FRIES_SVG}</span>
+                <span class="item-meal-ico">${MEAL_DRINK_SVG}</span>
+                ${_t('meal')}
+              </span>
+              <span class="item-meal-amount">
+                <span class="item-price-num">${item.mealPrice}</span>
+                <span class="item-price-cur">${_t('currency')}</span>
+              </span>
+            </div>` : ''}
           <div class="item-price-badge">
             <span class="item-price-num">${item.price}</span>
-            <span class="item-price-cur">ريال</span>
+            <span class="item-price-cur">${_t('currency')}</span>
           </div>
         </div>`;
 
@@ -206,23 +390,20 @@ function pauseAutoScroll() {
 
   // Reset countdown each time user interacts
   clearTimeout(pauseTimer);
-  pauseTimer = setTimeout(resumeAutoScroll, PAUSE_DURATION);
+  pauseTimer = setTimeout(resumeAutoScroll, _getPauseDuration());
+
+  // ألغِ أي تمرير برمجي مجدول لم يبدأ بعد — حتى لا يتصارع مع إصبع العميل
+  clearTimeout(_centerTimer);
 
   if (isPaused) return; // already paused, just reset timer above
   isPaused = true;
   clearTimeout(autoTimer);
+}
 
-  // Show paused indicator in status bar
-  const indicator = document.querySelector('.scroll-item-indicator');
-  if (indicator && !indicator.dataset.origHtml) {
-    indicator.dataset.origHtml = indicator.innerHTML;
-    indicator.innerHTML =
-      `<i class="fa-solid fa-hand-pointer" style="color:var(--red)"></i>
-       <span style="color:var(--white);font-weight:700">تصفح يدوي</span>`;
-  }
-  // Stop timer fill
-  const fill = $('scroll-timer-fill');
-  if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
+/* هل توجد نافذة/لعبة مفتوحة فوق الشاشة؟ لا نستأنف السكرول التلقائي خلفها */
+function _anyOverlayOpen() {
+  const ids = ['product-overlay', 'review-overlay', 'qrmenu-overlay', 'games-hub', 'game-overlay', 'xo-overlay'];
+  return ids.some(id => $(id)?.classList.contains('active'));
 }
 
 function resumeAutoScroll() {
@@ -231,19 +412,24 @@ function resumeAutoScroll() {
     return;
   }
 
+  if (!_isAutoScrollOn()) { isPaused = true; return; } // ابقَ متوقفاً إن كان السكرول التلقائي معطّلاً من لوحة التحكم
+
+  // نافذة ما زالت مفتوحة، أو العميل يلمس القائمة الآن → أجّل الاستئناف
+  if (_anyOverlayOpen() || _userTouching) {
+    isPaused = true;
+    clearTimeout(pauseTimer);
+    pauseTimer = setTimeout(resumeAutoScroll, _getPauseDuration());
+    return;
+  }
+
   isPaused = false;
   clearTimeout(pauseTimer);
 
-  // Restore indicator
-  const indicator = document.querySelector('.scroll-item-indicator');
-  if (indicator && indicator.dataset.origHtml) {
-    indicator.innerHTML = indicator.dataset.origHtml;
-    delete indicator.dataset.origHtml;
-  }
-
-  // Re-highlight current item and resume stepping
+  // Re-highlight nearest visible item and resume stepping
+  const resumeIdx = _findNearestVisibleItem();
+  curIdx = resumeIdx;
   highlightItem(curIdx);
-  autoTimer = setTimeout(stepScroll, ITEM_DURATION);
+  autoTimer = setTimeout(stepScroll, _getItemDuration());
 }
 
 /* ════════════════════════════════════════════════════════
@@ -252,6 +438,9 @@ function resumeAutoScroll() {
 let curIdx        = 0;
 let autoTimer     = null;
 let progScroll    = false; // true while centerItem is scrolling programmatically
+let _centerTimer  = null;  // مؤقت التمرير المؤجَّل بعد التحديد — يُلغى عند لمس العميل
+let _progEndTimer = null;  // يُنهي progScroll عند توقّف أحداث scroll فعلياً
+let _userTouching = false; // إصبع العميل على القائمة الآن
 
 function highlightItem(idx) {
   // Clamp & store
@@ -267,31 +456,30 @@ function highlightItem(idx) {
 
   // ── Small delay so the browser registers the new class before we call
   //    getBoundingClientRect() inside centerItem (forces a layout reflow).
-  setTimeout(() => centerItem(el), HIGHLIGHT_DELAY);
+  clearTimeout(_centerTimer);
+  _centerTimer = setTimeout(() => centerItem(el), HIGHLIGHT_DELAY);
 
   // Status bar
   setText('scroll-cur', String(idx + 1));
   const catId = el.dataset.cat;
   const cat   = menuCategories.find(c => c.id === catId);
   if (cat) {
-    setText('scroll-cat-label', cat.nameAr);
+    setText('scroll-cat-label', _tCat(cat));
     highlightActiveTab(catId);
   }
 
-  // Timer fill
-  const fill = $('scroll-timer-fill');
-  if (fill) {
-    fill.style.transition = 'none';
-    fill.style.width = '0%';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      fill.style.transition = `width ${ITEM_DURATION}ms linear`;
-      fill.style.width = '100%';
-    }));
-  }
 }
 
 /* ── Scroll config ── */
-const SCROLL_TOP_OFFSET = 10;   // px gap above the category heading
+const SCROLL_TOP_OFFSET = 10;   // px gap above the category heading (in element space)
+
+/* ── مقياس الشاشة الحالي (لتصحيح حسابات getBoundingClientRect) ── */
+function _getScreenScale() {
+  const screenEl = document.querySelector('.screen:not(#screen-vertical)');
+  if (!screenEl) return 1;
+  const m = screenEl.style.transform.match(/scale\(([\d.]+)\)/);
+  return m ? parseFloat(m[1]) : 1;
+}
 
 /**
  * After rendering all items, add enough padding-bottom to the scroll area
@@ -332,46 +520,114 @@ function fixScrollablePadding() {
 }
 
 /**
- * Scroll menu-items-area to the SECTION HEADING of the highlighted item's
- * category so the category name is always visible at the top.
+ * Scroll menu-items-area so that the highlighted item is fully visible
+ * and its category heading appears at the top.
  *
- * - Always anchors to the heading (not the item itself).
- * - Compares against the clamped target so same-category items don't
- *   trigger a redundant scroll call.
- * - Uses getBoundingClientRect() — always pixel-accurate.
+ * - Corrects for transform:scale() applied to .screen so the scroll
+ *   target is computed in element-space coordinates, not viewport-space.
+ * - Falls back to centering the item if the heading-at-top approach
+ *   would push the item below the visible fold.
  */
 function centerItem(el) {
   const area = $('menu-items-area');
   if (!area || !el) return;
+  // لا تحرّك القائمة برمجياً والعميل يلمسها — على iOS يُجمّد ذلك الزخم (momentum)
+  if (_userTouching) return;
 
+  // ── تحويل إحداثيات viewport → مساحة العنصر ──────────────
+  // getBoundingClientRect() يُعيد قيماً في مساحة viewport (بعد scale).
+  // area.scrollTop وarea.scrollTo() يعملان في مساحة العنصر (قبل scale).
+  const scale    = _getScreenScale();
+  const areaRect = area.getBoundingClientRect();
+
+  // العنوان (heading) للقسم
   const catId   = el.dataset.cat;
   const heading = area.querySelector(`.section-heading[data-cat="${catId}"]`);
   const anchor  = heading || el;
 
-  const areaRect   = area.getBoundingClientRect();
   const anchorRect = anchor.getBoundingClientRect();
+  const elRect     = el.getBoundingClientRect();
 
-  // Absolute top of the heading within the scroll content
-  const absTop  = anchorRect.top - areaRect.top + area.scrollTop;
-  const target  = Math.max(0, absTop - SCROLL_TOP_OFFSET);
+  // المسافة من أعلى المنطقة المرئية للعنصر — محوّلة لمساحة العنصر
+  const anchorDelta  = (anchorRect.top  - areaRect.top)  / scale;
+  const elTopDelta   = (elRect.top      - areaRect.top)  / scale;
+  const elBotDelta   = (elRect.bottom   - areaRect.top)  / scale;
 
-  // Clamp to the real scrollable limit (after fixScrollablePadding this should
-  // always be reachable, but guard just in case)
+  // الموضع المطلق داخل المحتوى (مساحة العنصر)
+  const anchorAbsTop = area.scrollTop + anchorDelta;
+  const elAbsTop     = area.scrollTop + elTopDelta;
+  const elAbsBot     = area.scrollTop + elBotDelta;
+
+  // الارتفاع المرئي للمنطقة (مساحة العنصر)
+  const visH = area.clientHeight;
+
+  // الهدف الأساسي: عنوان القسم عند أعلى المنطقة
+  let target = Math.max(0, anchorAbsTop - SCROLL_TOP_OFFSET);
+
+  // تحقّق: هل المنتج سيكون مرئياً كاملاً؟
+  const itemTopAfterScroll = elAbsTop - target;
+  const itemBotAfterScroll = elAbsBot - target;
+  if (itemBotAfterScroll > visH || itemTopAfterScroll < 0) {
+    // المنتج خارج المنطقة المرئية → توسيطه
+    const itemCenter = (elAbsTop + elAbsBot) / 2;
+    target = Math.max(0, itemCenter - visH / 2);
+  }
+
   const maxScroll = area.scrollHeight - area.clientHeight;
   const clamped   = Math.min(target, maxScroll);
 
-  // Skip if we're already there (same-category transition — no movement needed)
-  if (Math.abs(area.scrollTop - clamped) < 6) return;
+  // تجاهل إذا كنا في الموضع الصحيح بالفعل
+  if (Math.abs(area.scrollTop - clamped) < 4) return;
+
+  // المسافات الطويلة جداً (مثل العودة من آخر القائمة لأولها) تُنفَّذ فوراً
+  // بدل تمرير ناعم طويل يستغرق ثوانٍ ويبدو كتعليق على الآيباد
+  const far = Math.abs(area.scrollTop - clamped) > visH * 3;
 
   progScroll = true;
-  area.scrollTo({ top: clamped, behavior: 'smooth' });
-  // Reset flag after animation completes (~600ms)
-  setTimeout(() => { progScroll = false; }, 700);
+  area.scrollTo({ top: clamped, behavior: far ? 'auto' : 'smooth' });
+  // يُنهى progScroll عند توقّف أحداث scroll (انظر مستمع scroll) —
+  // وهذا حدّ أقصى احتياطي في حال لم يصدر أي حدث
+  clearTimeout(_progEndTimer);
+  _progEndTimer = setTimeout(() => { progScroll = false; }, 1500);
+}
+
+/**
+ * يجد أقرب منتج مرئي إلى منتصف المنطقة الظاهرة على الشاشة.
+ * يُستخدم عند استئناف السكرول التلقائي بعد التصفح اليدوي
+ * حتى لا يقفز السكرول فجأة لمنتج بعيد.
+ */
+function _findNearestVisibleItem() {
+  const area = $('menu-items-area');
+  if (!area || !allItemEls.length) return curIdx;
+
+  const scale    = _getScreenScale();
+  const areaRect = area.getBoundingClientRect();
+  // منتصف المنطقة المرئية في مساحة العنصر
+  const visCenter = area.scrollTop + area.clientHeight / 2;
+
+  let bestIdx  = curIdx;
+  let bestDist = Infinity;
+
+  allItemEls.forEach((el, idx) => {
+    if (el.style.display === 'none') return;
+    const nameEl = el.querySelector('.item-name-ar');
+    const key    = _devItemKey(el.dataset.cat, nameEl?.textContent || '');
+    if (_devScrollSkip.has(key) || _devCatSkip.has(el.dataset.cat)) return;
+
+    const rect       = el.getBoundingClientRect();
+    // تحويل مركز المنتج إلى مساحة العنصر
+    const itemCenter = area.scrollTop + (rect.top + rect.height / 2 - areaRect.top) / scale;
+    const dist       = Math.abs(itemCenter - visCenter);
+    if (dist < bestDist) { bestDist = dist; bestIdx = idx; }
+  });
+
+  return bestIdx;
 }
 
 function stepScroll() {
   clearTimeout(autoTimer);
   if (isPaused) return;
+  if (!_isAutoScrollOn()) return; // تم إيقاف السكرول التلقائي من لوحة التحكم
 
   // تخطّى المنتجات المخفية والمتخطَّاة في السكرول
   let nextIdx = (curIdx + 1) % allItemEls.length;
@@ -392,97 +648,132 @@ function stepScroll() {
   const curEl  = allItemEls[curIdx];
 
   const catChanged = nextEl && curEl && nextEl.dataset.cat !== curEl.dataset.cat;
-  const delay      = catChanged ? ITEM_DURATION + 800 : ITEM_DURATION;
+  const _dur       = _getItemDuration();
+  // تأخير إضافي 3 ثوانٍ عند الانتقال من قسم لآخر
+  const delay      = catChanged ? _dur + 3000 : _dur;
 
   highlightItem(nextIdx);
   autoTimer = setTimeout(stepScroll, delay);
 }
 
 function startAutoScroll() {
+  if (!_isAutoScrollOn()) return; // السكرول التلقائي مُعطَّل من لوحة التحكم
   // ابدأ من أول منتج مرئي
   let startIdx = 0;
   while (startIdx < allItemEls.length && allItemEls[startIdx]?.style.display === 'none') {
     startIdx++;
   }
   highlightItem(startIdx % (allItemEls.length || 1));
-  autoTimer = setTimeout(stepScroll, ITEM_DURATION);
+  autoTimer = setTimeout(stepScroll, _getItemDuration());
 }
 
 /* ════════════════════════════════════════════════════════
    PRODUCT DETAIL OVERLAY
 ════════════════════════════════════════════════════════ */
 let productOverlayTimer    = null;
+let _ovChangeTimer         = null;
 let productOverlayItemIdx  = -1;
 let overlayChanging        = false;
 let _overlayHasImage       = false;   // هل الـ overlay يعرض صورة حالياً؟
 let _imgCrossfadeTimer     = null;
+let _imgCrossfadeHideTimer = null;
+let _ovCloseTimer          = null;    // مؤقت إخفاء الـ overlay بعد حركة الإغلاق
 const PRODUCT_OVERLAY_DURATION = 8000;
 const OVERLAY_CHANGE_DURATION  = 260;   // ms — تلاشي النص قبل التبديل
 const OVERLAY_CLOSE_DURATION   = 430;
 const CROSSFADE_DURATION       = 520;   // ms — مدة التبديل بين الصورتين
+
+/* ── تحميل وفكّ ترميز الصورة قبل عرضها — يمنع ظهور إطار فارغ/أسود ── */
+let _imgLoadToken = 0;
+function _preloadImage(src) {
+  return new Promise(resolve => {
+    const im = new Image();
+    im.onload  = () => {
+      if (typeof im.decode === 'function') im.decode().then(() => resolve(true), () => resolve(true));
+      else resolve(true);
+    };
+    im.onerror = () => resolve(false);
+    im.src = src;
+  });
+}
+
+function _showOverlayPlaceholder() {
+  $('product-overlay-img').style.display  = 'none';
+  $('product-overlay-img2').style.display = 'none';
+  $('product-overlay-img-ph').style.display = 'flex';
+  _overlayHasImage = false;
+}
 
 /* ── Crossfade بين صورتين دون إظهار الخلفية ── */
 function _crossfadeOverlayImage(newSrc) {
   const img1  = $('product-overlay-img');
   const img2  = $('product-overlay-img2');
   const imgPh = $('product-overlay-img-ph');
+  const token = ++_imgLoadToken;   // أي طلب أحدث يُلغي نتيجة الطلبات السابقة
 
-  if (!newSrc) {
-    img1.style.display = 'none';
-    img2.style.display = 'none';
-    imgPh.style.display = 'flex';
-    _overlayHasImage = false;
-    return;
-  }
+  clearTimeout(_imgCrossfadeTimer);
+  clearTimeout(_imgCrossfadeHideTimer);
 
-  imgPh.style.display = 'none';
+  if (!newSrc) { _showOverlayPlaceholder(); return; }
 
   if (!_overlayHasImage) {
-    // فتح أول مرة — تعيين مباشر بدون crossfade
+    // فتح أول مرة — تعيين مباشر بدون crossfade (الصورة غالباً في الكاش)
+    img1.onerror = () => { if (token === _imgLoadToken) _showOverlayPlaceholder(); };
     img1.src           = newSrc;
     img1.style.display = 'block';
     img1.style.opacity = '1';
     img2.style.display = 'none';
     img2.style.opacity = '0';
+    imgPh.style.display = 'none';
     _overlayHasImage   = true;
     return;
   }
 
-  // التبديل بين منتجين — crossfade: img2 تتلاشى فوق img1 ثم تصبح هي img1
-  clearTimeout(_imgCrossfadeTimer);
+  // التبديل بين منتجين — ننتظر تحميل الصورة الجديدة أولاً ثم crossfade:
+  // img2 تتلاشى فوق img1 ثم تصبح هي img1
+  _preloadImage(newSrc).then(ok => {
+    if (token !== _imgLoadToken) return;           // طلب أحدث وصل أثناء التحميل
+    if (!ok) { _showOverlayPlaceholder(); return; }
 
-  img2.src = newSrc;
-  img2.style.display     = 'block';
-  img2.style.transition  = 'none';
-  img2.style.opacity     = '0';
+    imgPh.style.display    = 'none';
+    img2.src               = newSrc;
+    img2.style.display     = 'block';
+    img2.style.transition  = 'none';
+    img2.style.opacity     = '0';
 
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    img2.style.transition = `opacity ${CROSSFADE_DURATION}ms ease`;
-    img2.style.opacity    = '1';
-  }));
+    const _cfd = _getCrossfadeDur();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (token !== _imgLoadToken) return;
+      img2.style.transition = `opacity ${_cfd}ms ease`;
+      img2.style.opacity    = '1';
+    }));
 
-  _imgCrossfadeTimer = setTimeout(() => {
-    img1.src           = newSrc;
-    img1.style.display = 'block';
-    img1.style.opacity = '1';
-    img2.style.transition = 'none';
-    img2.style.opacity    = '0';
-    setTimeout(() => { img2.style.display = 'none'; }, 50);
-  }, CROSSFADE_DURATION + 30);
+    _imgCrossfadeTimer = setTimeout(() => {
+      img1.src           = newSrc;
+      img1.style.display = 'block';
+      img1.style.opacity = '1';
+      _imgCrossfadeHideTimer = setTimeout(() => {
+        img2.style.transition = 'none';
+        img2.style.opacity    = '0';
+        img2.style.display    = 'none';
+      }, 50);
+    }, _cfd + 30);
+  });
 }
 
 /* ── تعبئة بيانات المنتج (نصوص + صورة) ── */
 function _fillOverlayContent(item, idx) {
   productOverlayItemIdx = idx;
+  _currentOverlayItem   = item;
 
   const priceWrap = $('product-overlay-price-wrap');
   const calEl     = $('product-overlay-cal');
 
   // النصوص
-  $('product-overlay-name-ar').textContent = item.nameAr        || '';
-  $('product-overlay-name-en').textContent = item.nameEn        || '';
-  $('product-overlay-desc').textContent    = item.descriptionAr || '';
-  $('product-overlay-desc').style.display  = item.descriptionAr ? 'block' : 'none';
+  $('product-overlay-name-ar').textContent = item.nameAr    || '';
+  $('product-overlay-name-en').textContent = item.nameEn    || '';
+  $('product-overlay-desc').textContent    = _tDesc(item);
+  $('product-overlay-desc').style.display  = _tDesc(item) ? 'block' : 'none';
 
   // تتبع المشاهدة + الشارة في الـ overlay
   const _ovCat = menuCategories.find(c => c.items.includes(item));
@@ -508,8 +799,9 @@ function _fillOverlayContent(item, idx) {
     if (item.variants?.length) {
       const catId = _ovCat?.id || '';
       variantsEl.innerHTML = item.variants
-        .filter(v => !_devHiddenVariants.has(_devItemKey(catId, item.nameAr) + '||' + v))
-        .map(v => `<span class="overlay-variant-tag" data-vkey="${_devItemKey(catId, item.nameAr)}||${v}">${v}</span>`)
+        .map((v, vi) => ({ v, vi }))
+        .filter(({ v }) => !_devHiddenVariants.has(_devItemKey(catId, item.nameAr) + '||' + v))
+        .map(({ v, vi }) => `<span class="overlay-variant-tag" data-vkey="${_devItemKey(catId, item.nameAr)}||${v}">${_tVariantAt(item, vi)}</span>`)
         .join('');
       variantsEl.style.display = variantsEl.innerHTML ? 'flex' : 'none';
     } else {
@@ -525,11 +817,11 @@ function _fillOverlayContent(item, idx) {
       const tags = item.ingredients.map(ing => {
         if (ing.removable) {
           return `<span class="ingredient-tag ingredient-tag--removable">
-                    <i class="fa-solid fa-circle-minus"></i> ${ing.nameAr}
-                    <span class="ingredient-tag-hint">يمكن إزالته</span>
+                    <i class="fa-solid fa-circle-minus"></i> ${_tIngName(ing)}
+                    <span class="ingredient-tag-hint">${_t('removable')}</span>
                   </span>`;
         }
-        return `<span class="ingredient-tag">${ing.nameAr}</span>`;
+        return `<span class="ingredient-tag">${_tIngName(ing)}</span>`;
       }).join('');
       ingredientsEl.innerHTML = tags;
       ingredientsEl.style.display = 'flex';
@@ -547,7 +839,7 @@ function _fillOverlayContent(item, idx) {
       sauceBtns.innerHTML = item.sauceOptions.map((s, i) =>
         `<button class="sauce-btn${i === 0 ? ' sauce-btn--active' : ''}"
                  onclick="this.parentElement.querySelectorAll('.sauce-btn').forEach(b=>b.classList.remove('sauce-btn--active'));this.classList.add('sauce-btn--active')">
-           ${s}
+           ${_tSauceAt(item, i)}
          </button>`
       ).join('');
       sauceSection.style.display = 'flex';
@@ -558,6 +850,7 @@ function _fillOverlayContent(item, idx) {
   }
 
   // السعرات
+  setText('product-overlay-cal-unit', _t('calUnitFull'));
   if (item.calories) {
     $('product-overlay-cal-num').textContent = item.calories;
     calEl.style.display = 'inline-flex';
@@ -569,12 +862,31 @@ function _fillOverlayContent(item, idx) {
   _crossfadeOverlayImage(item.image || '');
 
   // السعر
+  setText('product-overlay-price-cur', _t('currency'));
   if (item.price != null) {
     $('product-overlay-price-num').textContent = item.price;
     priceWrap.style.display = 'inline-flex';
   } else {
     priceWrap.style.display = 'none';
   }
+
+  // سعر الوجبة — بطاقة بنفس تصميم السعر مع أيقونتي البطاطس والمشروب
+  const mealWrap = $('product-overlay-meal-wrap');
+  if (mealWrap) {
+    if (item.mealPrice != null && !_devMealPriceHidden) {
+      _initMealIcons();
+      setText('product-overlay-meal-label', _t('meal'));
+      setText('product-overlay-meal-cur',   _t('currency'));
+      $('product-overlay-meal-num').textContent = item.mealPrice;
+      mealWrap.style.display = 'inline-flex';
+    } else {
+      mealWrap.style.display = 'none';
+    }
+  }
+
+  // تسمية اختيار الصوص
+  const _sauceLabel = $('product-overlay-sauce-label');
+  if (_sauceLabel) _sauceLabel.innerHTML = `<i class="fa-solid fa-bottle-droplet"></i> ${_t('chooseSauce')}`;
 
   highlightItem(idx);
 }
@@ -584,7 +896,15 @@ function showProductOverlay(item, idx) {
   const overlay = $('product-overlay');
 
   clearTimeout(productOverlayTimer);
-  productOverlayTimer = setTimeout(hideProductOverlay, PRODUCT_OVERLAY_DURATION);
+  productOverlayTimer = setTimeout(hideProductOverlay, _getOverlayDuration());
+
+  // إن كان الإغلاق جارياً (حركة 430ms) ألغِ مؤقته — وإلا سيُخفي النافذة
+  // التي فُتحت للتو، فتبقى "مفتوحة" منطقياً ومخفية فعلياً ويبدو المنيو معلّقاً
+  if (_ovCloseTimer) {
+    clearTimeout(_ovCloseTimer);
+    _ovCloseTimer = null;
+    overlay.classList.remove('closing');
+  }
 
   if (overlay.classList.contains('active')) {
     /* الـ overlay مفتوح — تبديل سلس بين منتجين */
@@ -592,11 +912,11 @@ function showProductOverlay(item, idx) {
     overlayChanging = true;
     overlay.classList.add('changing');
 
-    setTimeout(() => {
+    _ovChangeTimer = setTimeout(() => {
       _fillOverlayContent(item, idx);
       overlay.classList.remove('changing');
       overlayChanging = false;
-    }, OVERLAY_CHANGE_DURATION);
+    }, _getOvChangeDur());
 
   } else {
     /* فتح أول مرة — ينبثق من الأسفل */
@@ -609,10 +929,18 @@ function showProductOverlay(item, idx) {
 
 /* ── إغلاق الـ overlay والعودة للتلقائي ── */
 function hideProductOverlay() {
+  const overlay = $('product-overlay');
+  // غير مفتوحة (أو تُغلق حالياً) — لا شيء نفعله، ولا نعيد تشغيل السكرول بلا داعٍ
+  if (!overlay || !overlay.classList.contains('active')) return;
+
   clearTimeout(productOverlayTimer);
   clearTimeout(_imgCrossfadeTimer);
+  clearTimeout(_imgCrossfadeHideTimer);
+  clearTimeout(_ovChangeTimer);
+  _imgLoadToken++;              // تجاهل أي صورة ما زالت تُحمَّل
   overlayChanging    = false;
   _overlayHasImage   = false;   // إعادة تعيين لفتح سلس في المرة القادمة
+  _currentOverlayItem = null;
 
   // إلغاء تحديد المنتج
   if (productOverlayItemIdx >= 0) {
@@ -620,16 +948,17 @@ function hideProductOverlay() {
     productOverlayItemIdx = -1;
   }
 
-  const overlay = $('product-overlay');
   overlay.classList.remove('active', 'changing');
   overlay.classList.add('closing');
 
-  setTimeout(() => {
+  clearTimeout(_ovCloseTimer);
+  _ovCloseTimer = setTimeout(() => {
+    _ovCloseTimer = null;
     overlay.style.display = 'none';
     overlay.classList.remove('closing');
     // العودة للتمرير التلقائي بعد اكتمال الانتقال
     resumeAutoScroll();
-  }, OVERLAY_CLOSE_DURATION);
+  }, _getOvCloseDur());
 }
 window.hideProductOverlay = hideProductOverlay;
 
@@ -638,6 +967,7 @@ window.hideProductOverlay = hideProductOverlay;
 ════════════════════════════════════════════════════════ */
 const REVIEW_OVERLAY_DURATION = 16000;   // ms — يُغلق تلقائياً
 let   _reviewTimer = null;
+let   _reviewCloseTimer = null;
 
 function showReviewOverlay() {
   const overlay = $('review-overlay');
@@ -663,8 +993,9 @@ function showReviewOverlay() {
     }
   }
 
-  // إيقاف عداد سابق
+  // إيقاف عداد سابق + إلغاء إغلاق جارٍ (وإلا يُخفي النافذة المفتوحة للتو)
   clearTimeout(_reviewTimer);
+  clearTimeout(_reviewCloseTimer);
 
   // إظهار — block يكفي لأن التخطيط الداخلي يعتمد على position:absolute
   overlay.style.display = 'block';
@@ -686,12 +1017,13 @@ function showReviewOverlay() {
 function hideReviewOverlay() {
   clearTimeout(_reviewTimer);
   const overlay = $('review-overlay');
-  if (!overlay) return;
+  if (!overlay || !overlay.classList.contains('active')) return;
 
   overlay.classList.remove('active');
   overlay.classList.add('closing');
 
-  setTimeout(() => {
+  clearTimeout(_reviewCloseTimer);
+  _reviewCloseTimer = setTimeout(() => {
     overlay.style.display = 'none';
     overlay.classList.remove('closing');
     resumeAutoScroll();
@@ -705,6 +1037,7 @@ window.showReviewOverlay  = showReviewOverlay;
 ════════════════════════════════════════════════════════ */
 const QRMENU_OVERLAY_DURATION = 30000;  // 30 ثانية إغلاق تلقائي
 let   _qrmenuTimer = null;
+let   _qrmenuCloseTimer = null;
 
 function showQRMenuOverlay() {
   const overlay = $('qrmenu-overlay');
@@ -733,6 +1066,7 @@ function showQRMenuOverlay() {
   if (taxEl) taxEl.textContent = restaurantInfo.taxNote || '';
 
   clearTimeout(_qrmenuTimer);
+  clearTimeout(_qrmenuCloseTimer);
   overlay.style.display = 'block';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     overlay.classList.remove('closing');
@@ -747,10 +1081,11 @@ function showQRMenuOverlay() {
 function hideQRMenuOverlay() {
   clearTimeout(_qrmenuTimer);
   const overlay = $('qrmenu-overlay');
-  if (!overlay) return;
+  if (!overlay || !overlay.classList.contains('active')) return;
   overlay.classList.remove('active');
   overlay.classList.add('closing');
-  setTimeout(() => {
+  clearTimeout(_qrmenuCloseTimer);
+  _qrmenuCloseTimer = setTimeout(() => {
     overlay.style.display = 'none';
     overlay.classList.remove('closing');
     resumeAutoScroll();
@@ -787,6 +1122,7 @@ function _startReviewTimer() {
 ════════════════════════════════════════════════════════ */
 let curSlide  = 0;
 let slideTimer = null;
+let _lastAppliedPin = undefined; // آخر شريحة مثبّتة طُبِّقت فعلياً — راجع applyDevSettings
 
 function renderSlides() {
   const wrapper = $('slides-wrapper');
@@ -821,7 +1157,7 @@ function renderSlides() {
         </div>`;
     } else {
       el.innerHTML = `
-        <img class="slide-img" src="${slide.image}" alt="${slide.titleAr}"
+        <img class="slide-img" src="${slide.image}" alt="${slide.titleAr}" decoding="async"
              onerror="this.style.background='#0a0001'">
         <div class="slide-content">
           ${slide.badge
@@ -849,30 +1185,34 @@ function renderSlides() {
   scheduleSlide();
 }
 
-function goToSlide(idx, _attempt) {
+function goToSlide(idx, _attempt, _pinned) {
   _attempt = _attempt || 0;
   const slideEls = document.querySelectorAll('.slide');
-  // تخطّى الشرائح المخفية
-  if (_attempt < slides.length && slideEls[idx]?.dataset.devHidden === 'true') {
-    return goToSlide((idx + 1) % slides.length, _attempt + 1);
+  // إذا كانت الشريحة مثبتة لا تتخطّ للشريحة المخفية — فقط اعرضها
+  if (!_pinned) {
+    if (_attempt < slides.length && slideEls[idx]?.dataset.devHidden === 'true') {
+      return goToSlide((idx + 1) % slides.length, _attempt + 1);
+    }
+    if (_attempt === slides.length) return; // كل الشرائح مخفية
   }
-  if (_attempt === slides.length) return; // كل الشرائح مخفية
 
   slideEls.forEach((s,i) => s.classList.toggle('active', i===idx));
   document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===idx));
   curSlide = idx;
   clearTimeout(slideTimer);
   fillSlideProgress();
-  scheduleSlide();
+  if (!_pinned) scheduleSlide();
 }
 function scheduleSlide() {
-  const dur = slides[curSlide]?.duration || 5000;
+  // لا تجدول إذا كانت هناك شريحة مثبتة
+  if (_devPinnedSlide !== null && !isNaN(_devPinnedSlide)) return;
+  const dur = _getSlideDur(curSlide);
   slideTimer = setTimeout(() => goToSlide((curSlide+1) % slides.length), dur);
 }
 function fillSlideProgress() {
   const fill = $('progress-fill');
   if (!fill) return;
-  const dur = slides[curSlide]?.duration || 5000;
+  const dur = _getSlideDur(curSlide);
   fill.style.transition = 'none'; fill.style.width = '0%';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     fill.style.transition = `width ${dur}ms linear`;
@@ -1002,6 +1342,8 @@ const SS_DISCOUNT  = 'duo_discount_hidden';
 const SS_PHONE     = 'duo_phone_hidden';
 const SS_GAMES     = 'duo_games_hidden';
 const SS_QRMENU    = 'duo_qrmenu_hidden';
+const SS_LANGBTN   = 'duo_langbtn_hidden';
+const SS_MEALPRICE = 'duo_mealprice_hidden';
 const SS_VARIANTS  = 'duo_hidden_variants';
 const LS_BADGES    = 'duo_badges';
 const LS_STATS_PFX = 'duo_stats_';
@@ -1014,8 +1356,11 @@ let _devHiddenSlides   = new Set();
 let _devHiddenVariants = new Set();
 let _devDiscountHidden = false;
 let _devPhoneHidden    = false;
+let _devPinnedSlide    = null; // null = لا تثبيت | رقم = الشريحة المثبتة
 let _devGamesHidden    = false;
 let _devQRMenuHidden   = false;
+let _devLangBtnHidden  = false;
+let _devMealPriceHidden = false;  // إخفاء/إظهار دائرة سعر الوجبة
 let _devBadges         = {};   // { "catId||nameAr": "popular"|"new"|"limited"|"" }
 let _devTempHide       = {};   // { "key": expiryMs }  — إخفاء مؤقت
 let _devScrollSkip     = new Set(); // مفاتيح المنتجات التي يتخطاها السكرول
@@ -1032,9 +1377,9 @@ function _trackView(catId, nameAr) {
 
 /* ── الشارات ── */
 const BADGE_META = {
-  popular: { label: 'الأكثر طلباً', icon: 'fa-fire',        cls: 'badge--popular' },
-  new:     { label: 'جديد',         icon: 'fa-star',         cls: 'badge--new'     },
-  limited: { label: 'محدود',        icon: 'fa-clock',        cls: 'badge--limited' },
+  popular: { labelAr: 'الأكثر طلباً', labelEn: 'Best Seller', icon: 'fa-fire',  cls: 'badge--popular' },
+  new:     { labelAr: 'جديد',         labelEn: 'New',         icon: 'fa-star',  cls: 'badge--new'     },
+  limited: { labelAr: 'محدود',        labelEn: 'Limited',     icon: 'fa-clock', cls: 'badge--limited' },
 };
 function _loadBadges()  { try { _devBadges = JSON.parse(localStorage.getItem(LS_BADGES) || '{}'); } catch { _devBadges = {}; } }
 function _saveBadges()  { localStorage.setItem(LS_BADGES, JSON.stringify(_devBadges)); }
@@ -1042,41 +1387,55 @@ function _getBadge(catId, nameAr) { return _devBadges[_devItemKey(catId, nameAr)
 function _badgeHTML(badge) {
   if (!badge || !BADGE_META[badge]) return '';
   const m = BADGE_META[badge];
-  return `<span class="item-badge ${m.cls}"><i class="fa-solid ${m.icon}"></i> ${m.label}</span>`;
+  const label = menuLang === 'en' ? m.labelEn : m.labelAr;
+  return `<span class="item-badge ${m.cls}"><i class="fa-solid ${m.icon}"></i> ${label}</span>`;
 }
 
 function _devItemKey(catId, nameAr) { return catId + '||' + nameAr; }
 
-/* تحميل الإعدادات من sessionStorage */
+/* تحميل الإعدادات من localStorage (كانت sessionStorage وتُمسح عندما يغلق iOS التطبيق في الخلفية) */
 function _devLoadSettings() {
   try {
-    _devHiddenItems    = new Set(JSON.parse(sessionStorage.getItem(SS_ITEMS)    || '[]'));
-    _devHiddenSlides   = new Set(JSON.parse(sessionStorage.getItem(SS_SLIDES)   || '[]').map(String));
-    _devHiddenVariants = new Set(JSON.parse(sessionStorage.getItem(SS_VARIANTS) || '[]'));
+    _devHiddenItems    = new Set(JSON.parse(localStorage.getItem(SS_ITEMS)    || '[]'));
+    _devHiddenSlides   = new Set(JSON.parse(localStorage.getItem(SS_SLIDES)   || '[]').map(String));
+    _devHiddenVariants = new Set(JSON.parse(localStorage.getItem(SS_VARIANTS) || '[]'));
     // الزر والهاتف يظهران دائماً بشكل افتراضي — القيمة false إلا إذا خُصِّصت صراحةً
-    const discRaw = sessionStorage.getItem(SS_DISCOUNT);
-    const phoneRaw = sessionStorage.getItem(SS_PHONE);
+    const discRaw = localStorage.getItem(SS_DISCOUNT);
+    const phoneRaw = localStorage.getItem(SS_PHONE);
     _devDiscountHidden = discRaw  === 'true';
     _devPhoneHidden    = phoneRaw === 'true';
-    _devGamesHidden    = sessionStorage.getItem(SS_GAMES)  === 'true';
-    _devQRMenuHidden   = sessionStorage.getItem(SS_QRMENU) === 'true';
+    _devGamesHidden    = localStorage.getItem(SS_GAMES)  === 'true';
+    _devQRMenuHidden   = localStorage.getItem(SS_QRMENU) === 'true';
+    _devLangBtnHidden  = localStorage.getItem(SS_LANGBTN) === 'true';
+    _devMealPriceHidden = localStorage.getItem(SS_MEALPRICE) === 'true';
     // ضمان: إذا لم تُحدَّد بعد، تأكّد من وضعها كـ "ظاهر"
-    if (discRaw  === null) { sessionStorage.setItem(SS_DISCOUNT, 'false'); _devDiscountHidden = false; }
-    if (phoneRaw === null) { sessionStorage.setItem(SS_PHONE,    'false'); _devPhoneHidden    = false; }
+    if (discRaw  === null) { localStorage.setItem(SS_DISCOUNT, 'false'); _devDiscountHidden = false; }
+    if (phoneRaw === null) { localStorage.setItem(SS_PHONE,    'false'); _devPhoneHidden    = false; }
     _loadBadges();
     try { _devTempHide = JSON.parse(localStorage.getItem(LS_TEMP_HIDE) || '{}'); } catch { _devTempHide = {}; }
     _devScrollSkip = new Set(JSON.parse(localStorage.getItem(LS_SCROLL_SKIP) || '[]'));
     _devCatSkip    = new Set(JSON.parse(localStorage.getItem(LS_CAT_SKIP)    || '[]'));
+    const _ps = localStorage.getItem(LS_PINNED_SLIDE);
+    _devPinnedSlide = (_ps !== null && _ps !== '') ? parseInt(_ps, 10) : null;
   } catch(e) {
     _devHiddenItems = new Set(); _devHiddenSlides = new Set();
     _devHiddenVariants = new Set(); _devDiscountHidden = false; _devPhoneHidden = false;
+    _devMealPriceHidden = false;
     _devTempHide = {}; _devScrollSkip = new Set(); _devCatSkip = new Set();
+    _devPinnedSlide = null;
   }
+}
+
+/* الوقت الموحّد (ساعة خادم Firebase إن توفّرت) — أوقات الإخفاء المؤقت تُكتب
+   من جهاز آخر، فالمقارنة بساعة هذا الجهاز وحده تُظهر المنتجات مبكراً/متأخراً */
+function _syncNow() {
+  return (window.DuoSync && typeof window.DuoSync.serverNow === 'function')
+    ? window.DuoSync.serverNow() : Date.now();
 }
 
 /* تحقّق من انتهاء أوقات الإخفاء المؤقت وأظهر المنتجات تلقائياً */
 function _checkTempHides() {
-  const now = Date.now();
+  const now = _syncNow();
   let changed = false;
   Object.keys(_devTempHide).forEach(k => {
     if (_devTempHide[k] <= now) { delete _devTempHide[k]; changed = true; }
@@ -1093,15 +1452,15 @@ setInterval(_checkTempHides, 30000); // كل 30 ثانية
 function _forceShowHeaderButtons() {
   _devDiscountHidden = false;
   _devPhoneHidden    = false;
-  sessionStorage.setItem(SS_DISCOUNT, 'false');
-  sessionStorage.setItem(SS_PHONE,    'false');
+  localStorage.setItem(SS_DISCOUNT, 'false');
+  localStorage.setItem(SS_PHONE,    'false');
   applyDevSettings();
 }
 
 /* تطبيق الإعدادات على الـ DOM */
 function applyDevSettings() {
   // المنتجات — إخفاء دائم أو مؤقت، وتمييز المتخطَّى في السكرول
-  const _now = Date.now();
+  const _now = _syncNow();
   allItemEls.forEach(el => {
     const nameEl  = el.querySelector('.item-name-ar');
     const key     = _devItemKey(el.dataset.cat, nameEl?.textContent || '');
@@ -1116,10 +1475,25 @@ function applyDevSettings() {
     if (_devHiddenSlides.has(String(i))) el.dataset.devHidden = 'true';
     else delete el.dataset.devHidden;
   });
-  // انتقل للشريحة التالية إذا كانت الحالية مخفية
-  const slideEls = document.querySelectorAll('.slide');
-  if (slideEls[curSlide]?.dataset.devHidden === 'true') {
-    goToSlide((curSlide + 1) % slides.length);
+
+  // تثبيت الشريحة — إذا كانت هناك شريحة مثبتة، انتقل إليها وأوقف السلايدشو
+  // فقط عند تغيّر التثبيت فعلياً؛ applyDevSettings تُستدعى مع أي مزامنة
+  // إعدادات (حتى لو لا علاقة لها بالشرائح)، وكانت تُعيد تشغيل شريط تقدّم
+  // الشريحة المثبّتة من الصفر في كل مرة — وميض غير مبرر أمام العميل.
+  if (_devPinnedSlide !== null && !isNaN(_devPinnedSlide)) {
+    if (_devPinnedSlide !== _lastAppliedPin) {
+      clearTimeout(slideTimer);
+      slideTimer = null;
+      goToSlide(_devPinnedSlide, 0, true /* pinned — لا تجدول الانتقال التالي */);
+      _lastAppliedPin = _devPinnedSlide;
+    }
+  } else {
+    _lastAppliedPin = null;
+    // انتقل للشريحة التالية إذا كانت الحالية مخفية
+    const slideEls = document.querySelectorAll('.slide');
+    if (slideEls[curSlide]?.dataset.devHidden === 'true') {
+      goToSlide((curSlide + 1) % slides.length);
+    }
   }
 
   // الخيارات / الأنواع (variants)
@@ -1149,6 +1523,20 @@ function applyDevSettings() {
   const qrMenuBtn = $('header-qrmenu-btn');
   if (qrMenuBtn) qrMenuBtn.style.display = _devQRMenuHidden ? 'none' : '';
 
+  // زر ترجمة المنيو
+  const langBtn = $('header-lang-btn');
+  if (langBtn) langBtn.style.display = _devLangBtnHidden ? 'none' : '';
+
+  // دائرة سعر الوجبة — في قائمة المنتجات وفي تفاصيل المنتج
+  document.querySelectorAll('.item-meal-badge').forEach(el => {
+    el.style.display = _devMealPriceHidden ? 'none' : '';
+  });
+  const ovMeal = $('product-overlay-meal-wrap');
+  if (ovMeal) {
+    const ovHasMeal = _currentOverlayItem && _currentOverlayItem.mealPrice != null;
+    ovMeal.style.display = (ovHasMeal && !_devMealPriceHidden) ? 'inline-flex' : 'none';
+  }
+
   // عداد المنتجات
   const visCount = allItemEls.filter(el => el.style.display !== 'none').length;
   setText('scroll-total', String(visCount || allItemEls.length));
@@ -1168,29 +1556,161 @@ function applyRemoteSettings(v) {
     _devPhoneHidden    = !!v.phoneHidden;
     _devGamesHidden    = !!v.gamesHidden;
     _devQRMenuHidden   = !!v.qrmenuHidden;
+    _devLangBtnHidden  = !!v.langBtnHidden;
+    _devMealPriceHidden = !!v.mealPriceHidden;
     _devBadges         = v.badges || {};
     _devTempHide       = v.tempHide   || {};
     _devScrollSkip     = new Set(v.scrollSkip || []);
     _devCatSkip        = new Set(v.catSkip    || []);
 
     // خزّن محلياً كنسخة احتياطية
-    sessionStorage.setItem(SS_ITEMS,    JSON.stringify([..._devHiddenItems]));
-    sessionStorage.setItem(SS_SLIDES,   JSON.stringify([..._devHiddenSlides]));
-    sessionStorage.setItem(SS_VARIANTS, JSON.stringify([..._devHiddenVariants]));
-    sessionStorage.setItem(SS_DISCOUNT, String(_devDiscountHidden));
-    sessionStorage.setItem(SS_PHONE,    String(_devPhoneHidden));
-    sessionStorage.setItem(SS_GAMES,    String(_devGamesHidden));
-    sessionStorage.setItem(SS_QRMENU,  String(_devQRMenuHidden));
+    localStorage.setItem(SS_ITEMS,    JSON.stringify([..._devHiddenItems]));
+    localStorage.setItem(SS_SLIDES,   JSON.stringify([..._devHiddenSlides]));
+    localStorage.setItem(SS_VARIANTS, JSON.stringify([..._devHiddenVariants]));
+    localStorage.setItem(SS_DISCOUNT, String(_devDiscountHidden));
+    localStorage.setItem(SS_PHONE,    String(_devPhoneHidden));
+    localStorage.setItem(SS_GAMES,    String(_devGamesHidden));
+    localStorage.setItem(SS_QRMENU,  String(_devQRMenuHidden));
+    localStorage.setItem(SS_LANGBTN, String(_devLangBtnHidden));
+    localStorage.setItem(SS_MEALPRICE, String(_devMealPriceHidden));
     localStorage.setItem(LS_BADGES,     JSON.stringify(_devBadges));
     localStorage.setItem(LS_TEMP_HIDE,  JSON.stringify(_devTempHide));
     localStorage.setItem(LS_SCROLL_SKIP,JSON.stringify([..._devScrollSkip]));
     localStorage.setItem(LS_CAT_SKIP,   JSON.stringify([..._devCatSkip]));
+
+    // إعدادات السكرول الديناميكية
+    if (v.autoScroll !== undefined) {
+      const wasOn = _isAutoScrollOn();
+      const nowOn = !!v.autoScroll;
+      localStorage.setItem(LS_AUTO_SCROLL, String(nowOn));
+      // طبّق التغيير فوراً على المحرّك الجاري بدل انتظار إعادة تحميل الصفحة
+      if (nowOn !== wasOn) {
+        if (nowOn) {
+          if (allItemEls.length) {
+            clearTimeout(autoTimer);
+            clearTimeout(pauseTimer);
+            isPaused = false;
+            startAutoScroll();
+          } else if (typeof window._vxResume === 'function') {
+            window._vxResume();
+          }
+        } else {
+          clearTimeout(autoTimer);
+          clearTimeout(pauseTimer);
+          if (typeof window._vxPause === 'function') window._vxPause();
+        }
+      }
+    }
+    if (v.itemDuration    !== undefined) localStorage.setItem(LS_ITEM_DURATION_KEY,    String(parseInt(v.itemDuration,    10) || ITEM_DURATION));
+    if (v.pauseDuration   !== undefined) localStorage.setItem(LS_PAUSE_DURATION_KEY,   String(parseInt(v.pauseDuration,   10) || PAUSE_DURATION));
+    if (v.overlayDuration !== undefined) localStorage.setItem(LS_OVERLAY_DURATION_KEY, String(parseInt(v.overlayDuration, 10) || 8000));
+    // إعدادات Overlay/Crossfade
+    if (v.crossfadeDur    !== undefined) localStorage.setItem(LS_CROSSFADE_DUR,    String(parseInt(v.crossfadeDur,    10) || 520));
+    if (v.ovChangeDur     !== undefined) localStorage.setItem(LS_OV_CHANGE_DUR,    String(parseInt(v.ovChangeDur,     10) || 260));
+    if (v.ovCloseDur      !== undefined) localStorage.setItem(LS_OV_CLOSE_DUR,     String(parseInt(v.ovCloseDur,      10) || 430));
+    // مدة الشرائح المخصصة
+    if (v.slideDurations  !== undefined) localStorage.setItem(LS_SLIDE_DURATIONS,  JSON.stringify(v.slideDurations || {}));
+    // تثبيت الشريحة
+    if (v.pinnedSlide !== undefined) {
+      _devPinnedSlide = (v.pinnedSlide !== null && v.pinnedSlide !== undefined) ? parseInt(v.pinnedSlide, 10) : null;
+      if (_devPinnedSlide !== null) localStorage.setItem(LS_PINNED_SLIDE, String(_devPinnedSlide));
+      else localStorage.removeItem(LS_PINNED_SLIDE);
+    }
+    // وضع الصيانة
+    if (v.maintenanceOn !== undefined) {
+      localStorage.setItem(LS_MAINTENANCE, String(!!v.maintenanceOn));
+      if (v.maintenanceMsg !== undefined) localStorage.setItem(LS_MAINTENANCE_MSG, String(v.maintenanceMsg));
+      if (v.maintenanceOn) _showMaintenanceScreen();
+      else                 _hideMaintenanceScreen();
+    }
 
     _refreshAllBadges();
     applyDevSettings();
   } catch (e) { console.warn('[Sync] apply error:', e); }
 }
 window.applyRemoteSettings = applyRemoteSettings;
+
+/* ════════════════════════════════════════════════════════
+   أوامر الكاشير الفورية — تُنفَّذ على شاشة المنيو عند ورودها من شاشة الكاشير
+════════════════════════════════════════════════════════ */
+function _executeCashierAction(v) {
+  if (!v || !v.type) return;
+  try {
+    switch (v.type) {
+
+      case 'showProduct': {
+        // إظهار overlay تفاصيل منتج معيّن وتحديده في القائمة (كأن العميل ضغط عليه)
+        const cat  = menuCategories.find(c => c.id === v.catId);
+        const item = cat?.items.find(i => i.nameAr === v.nameAr);
+        if (item) {
+          // احسب الفهرس الحقيقي للمنتج داخل allItemEls (نفس ترتيب بنائها في
+          // renderAllCategories: تصنيف تلو الآخر، ثم منتجات كل تصنيف بالترتيب)
+          let idx = -1;
+          if (cat) {
+            idx = 0;
+            for (const c of menuCategories) {
+              if (c.id === cat.id) { idx += c.items.indexOf(item); break; }
+              idx += c.items.length;
+            }
+          }
+          pauseAutoScroll();
+          showProductOverlay(item, idx);
+        }
+        break;
+      }
+
+      case 'hideOverlay':
+        // إغلاق أي نافذة مفتوحة على الشاشة
+        hideProductOverlay();
+        if (typeof window.hideReviewOverlay  === 'function') window.hideReviewOverlay();
+        if (typeof window.hideQRMenuOverlay  === 'function') window.hideQRMenuOverlay();
+        if (typeof window.hideGamesHub       === 'function') window.hideGamesHub();
+        break;
+
+      case 'showDiscount':
+        // عرض نافذة الخصم / التقييم
+        if (typeof window.showReviewOverlay === 'function') window.showReviewOverlay();
+        break;
+
+      case 'showQRMenu':
+        // عرض QR منيو الجوال
+        if (typeof window.showQRMenuOverlay === 'function') window.showQRMenuOverlay();
+        break;
+
+      case 'showGames':
+        // فتح شاشة الألعاب
+        if (typeof window.showGamesHub === 'function') window.showGamesHub();
+        break;
+
+      case 'toggleLang':
+        // تبديل لغة المنيو بين العربي والإنجليزي
+        if (typeof toggleMenuLanguage === 'function') toggleMenuLanguage();
+        break;
+
+      case 'launchGame': {
+        // الألعاب تتزامن بين شاشتين عبر DuoConnect بدورين (يسار/يمين):
+        // شاشة واحدة فقط تصبح "المضيف" وترسل طلب الفتح لشريكتها. أمر
+        // الكاشير يصل لكل الشاشات المتصلة بنفس الفرع في آنٍ واحد، فلو
+        // شغّلنا اللعبة على الشاشتين معاً ستصبح كل واحدة "مضيفاً" مستقلاً
+        // ويختل التزامن بينهما تماماً. لذلك تبدأ الشاشة اليسرى فقط اللعبة
+        // فعلياً، وتصل اللعبة للشاشة اليمنى عبر رسالة "open" العادية.
+        const myRole = (localStorage.getItem('duo_pair_role') || 'left').trim();
+        if (myRole !== 'left') break;
+        if (v.game === 'xo') {
+          if (typeof launchXO === 'function') launchXO();
+        } else {
+          if (typeof launchDuoGame === 'function') launchDuoGame();
+        }
+        break;
+      }
+
+      case 'goToSlide':
+        // الانتقال لشريحة معيّنة
+        if (typeof goToSlide === 'function') goToSlide(parseInt(v.idx, 10) || 0);
+        break;
+    }
+  } catch(e) { console.warn('[CashierAction] error:', e); }
+}
 
 /* تحديث شارات كل البطاقات بحسب _devBadges */
 function _refreshAllBadges() {
@@ -1260,6 +1780,8 @@ function closeDevModal() {
 function checkDevPassword() {
   if (_devPinValue === DEV_PASSWORD) {
     closeDevModal();
+    // أثبت الهوية لهذه الجلسة حتى لا يُطلَب الرقم السري مرة ثانية عند وصول لوحة التحكم
+    try { sessionStorage.setItem('duo_admin_ok', '1'); } catch (e) {}
     // فتح صفحة الداشبورد المنفصلة
     window.location.href = 'dashboard.html';
   } else {
@@ -1298,6 +1820,22 @@ const BASE_H_VL = 1920;
 const LS_SCALE_MODE = 'duo_scale_mode';   // 'auto' | 'manual'
 const LS_SCALE_VAL  = 'duo_screen_scale'; // رقم المقياس اليدوي
 const LS_LAYOUT     = 'duo_menu_layout';  // 'horizontal' | 'vertical'
+
+/* ════════════════════════════════════════════════════════
+   قفل اتجاه الشاشة بناءً على وضع العرض المختار
+   ─ يعمل على Android / Chrome تلقائياً
+   ─ على iOS: المانيفيست (orientation: any) يسمح بالدوران
+     ويتبع الجهاز اتجاه الـ iPad الفعلي
+════════════════════════════════════════════════════════ */
+function _applyOrientationLock(layout) {
+  const target = (layout === 'vertical') ? 'portrait' : 'landscape';
+  try {
+    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      screen.orientation.lock(target).catch(() => {});
+    }
+  } catch (_) {}
+}
+window._applyOrientationLock = _applyOrientationLock;
 
 function fitScreenToViewport() {
   // اختر الشاشة المرئية: العمودية إن كانت مفعّلة، وإلا الأفقية
@@ -1338,262 +1876,51 @@ window.fitScreenToViewport = fitScreenToViewport;
 window.addEventListener('resize', fitScreenToViewport);
 window.addEventListener('orientationchange', fitScreenToViewport);
 
-/* ════════════════════════════════════════════════════════
-   VERTICAL LAYOUT — Liquid Glass  (النسخة القديمة — غير مستخدمة)
-   ─────────────────────────────────────────────────────────
-   ⚠️ استُبدل هذا المحرّك بالعرض السينمائي في vmenu.js.
-   الكود أدناه لم يعد يُستدعى من أي مكان، ومُبقى مؤقتاً
-   للرجوع إليه فقط — يمكن حذفه بأمان (حتى نهاية
-   الدالة _vlRebuildIfActive).
-════════════════════════════════════════════════════════ */
-let _vlCats       = [];   // [{id, nameAr, icon, visItems:[…]}]
-let _vlCurCatIdx  = 0;    // القسم الحالي
-let _vlCurProdIdx = 0;    // المنتج الحالي داخل القسم
-let _vlTimer      = null;
-let _vlPaused     = false;
-let _vlPauseTimer2 = null;
-let _vlCurImgSrc  = '';
-let _vlImgFadeTimer = null;
-
-function _vlInit() {
-  /* هيدر */
-  const logo  = restaurantInfo.logo;
-  const vImg  = document.getElementById('vl-logo-img');
-  const vPh   = document.getElementById('vl-logo-ph');
-  if (logo && vImg) {
-    vImg.src = logo;
-    vImg.style.display = 'block';
-    if (vPh) vPh.style.display = 'none';
-  }
-  setText('vl-name-ar',    restaurantInfo.nameAr    || '');
-  setText('vl-name-en',    restaurantInfo.nameEn    || '');
-  setText('vl-tagline',    restaurantInfo.taglineAr || '');
-  setText('vl-tax-text',   restaurantInfo.taxNote   || '');
-  setText('vl-phone-value', restaurantInfo.phone    || '');
-
-  /* إخفاء زر الخصم إذا لم يكن هناك رابط Google Maps */
-  if (!restaurantInfo.googleMapsUrl || restaurantInfo.googleMapsUrl.includes('YOUR_LINK')) {
-    const vDisc = $('vl-discount-btn');
-    if (vDisc) vDisc.style.display = 'none';
-  }
-
-  _vlBuildCats();
-  setTimeout(_vlStart, 900);
-
-  /* إيقاف مؤقت عند لمس قسم المنتجات */
-  const sectDisplay = document.getElementById('vl-section-display');
-  if (sectDisplay) {
-    sectDisplay.addEventListener('touchstart', _vlPause, { passive: true });
-  }
-}
-
-/* بناء قائمة الأقسام من menuCategories */
-function _vlBuildCats() {
-  _vlCats = [];
-  menuCategories.forEach(cat => {
-    const visItems = cat.items.filter(it =>
-      !_devHiddenItems.has(_devItemKey(cat.id, it.nameAr))
-    );
-    if (!visItems.length) return;
-    _vlCats.push({ id: cat.id, nameAr: cat.nameAr, icon: cat.icon, visItems });
-  });
-}
-
-/* تصيير قسم بعينه: رأس + صفوف + زر التالي */
-function _vlRenderCategory(catIdx) {
-  const cat = _vlCats[catIdx];
-  if (!cat) return;
-
-  /* رأس القسم */
-  const sectHeader = $('vl-sect-header');
-  if (sectHeader) {
-    sectHeader.innerHTML =
-      `<i class="fa-solid ${cat.icon} vl-sect-header-icon"></i>` +
-      `<span class="vl-sect-header-name">${cat.nameAr}</span>`;
-  }
-
-  /* شارة فوق الصورة */
-  setText('vl-cat-badge', cat.nameAr);
-
-  /* صفوف المنتجات */
-  const sectRows = $('vl-sect-rows');
-  if (!sectRows) return;
-  sectRows.innerHTML = '';
-
-  cat.visItems.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'vl-row';
-    row.dataset.image = item.image || '';
-    row.dataset.price = item.price != null ? String(item.price) : '';
-
-    const num       = String(idx + 1).padStart(2, '0');
-    const priceHtml = item.price != null
-      ? `<span class="vl-row-price">${item.price} ريال</span>` : '';
-
-    row.innerHTML =
-      `<span class="vl-row-num">${num}</span>` +
-      `<div class="vl-row-names">` +
-        `<span class="vl-row-name-ar">${item.nameAr}</span>` +
-        `<span class="vl-row-name-en">${item.nameEn || ''}</span>` +
-      `</div>` +
-      priceHtml;
-
-    row.addEventListener('click', () => { _vlPause(); _vlHighlight(idx); });
-    sectRows.appendChild(row);
-  });
-
-  /* زر القسم التالي — يعرض اسم القسم القادم */
-  const nextLabel = $('vl-next-btn-label');
-  if (nextLabel && _vlCats.length > 1) {
-    const nextCat = _vlCats[(_vlCurCatIdx + 1) % _vlCats.length];
-    if (nextCat) nextLabel.textContent = nextCat.nameAr;
-  }
-}
-
-/* تحديث التمييز + الصورة */
-function _vlHighlight(prodIdx) {
-  const cat = _vlCats[_vlCurCatIdx];
-  if (!cat || !cat.visItems.length) return;
-
-  prodIdx = ((prodIdx % cat.visItems.length) + cat.visItems.length) % cat.visItems.length;
-  _vlCurProdIdx = prodIdx;
-
-  const rows = document.querySelectorAll('#vl-sect-rows .vl-row');
-  rows.forEach((r, i) => r.classList.toggle('vl-active', i === prodIdx));
-
-  const item = cat.visItems[prodIdx];
-  if (!item) return;
-
-  /* الصورة */
-  const newSrc = item.image || '';
-  const imgEl  = document.getElementById('vl-prod-img');
-  const phEl   = document.getElementById('vl-prod-ph');
-  const bgEl   = document.getElementById('vl-glass-bg');
-
-  if (newSrc && newSrc !== _vlCurImgSrc) {
-    _vlCurImgSrc = newSrc;
-    clearTimeout(_vlImgFadeTimer);
-    if (imgEl) {
-      imgEl.classList.remove('vl-img-visible');
-      _vlImgFadeTimer = setTimeout(() => {
-        imgEl.src = newSrc;
-        imgEl.style.display = 'block';
-        if (phEl) phEl.style.display = 'none';
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          imgEl.classList.add('vl-img-visible');
-        }));
-      }, 200);
-    }
-    if (bgEl) bgEl.style.backgroundImage = `url('${newSrc}')`;
-  } else if (!newSrc) {
-    _vlCurImgSrc = '';
-    if (imgEl) { imgEl.classList.remove('vl-img-visible'); imgEl.style.display = 'none'; }
-    if (phEl)  phEl.style.display = 'flex';
-    if (bgEl)  bgEl.style.backgroundImage = '';
-  }
-
-  /* السعر */
-  const priceBadge  = $('vl-price-badge');
-  const priceBadgeN = $('vl-price-badge-num');
-  if (priceBadge) {
-    if (item.price != null) {
-      if (priceBadgeN) priceBadgeN.textContent = item.price;
-      priceBadge.style.display = 'inline-flex';
-    } else {
-      priceBadge.style.display = 'none';
-    }
-  }
-}
-
-function _vlStart() {
-  if (!_vlCats.length) return;
-  _vlCurCatIdx  = 0;
-  _vlCurProdIdx = 0;
-  _vlRenderCategory(0);
-  _vlHighlight(0);
-  _vlTimer = setTimeout(_vlStep, ITEM_DURATION);
-}
-
-function _vlStep() {
-  clearTimeout(_vlTimer);
-  if (_vlPaused) return;
-
-  const cat = _vlCats[_vlCurCatIdx];
-  if (!cat) return;
-
-  const nextProdIdx = _vlCurProdIdx + 1;
-
-  if (nextProdIdx >= cat.visItems.length) {
-    /* انتهت منتجات هذا القسم → انتظر ثم انتقل للتالي */
-    _vlTimer = setTimeout(_vlNextCat, ITEM_DURATION + 1200);
-  } else {
-    _vlHighlight(nextProdIdx);
-    _vlTimer = setTimeout(_vlStep, ITEM_DURATION);
-  }
-}
-
-/* الانتقال للقسم التالي (يُستدعى من الزر أو تلقائياً) */
-function _vlNextCat() {
-  if (!_vlCats.length) return;
-  clearTimeout(_vlTimer);
-
-  _vlCurCatIdx  = (_vlCurCatIdx + 1) % _vlCats.length;
-  _vlCurProdIdx = 0;
-  _vlCurImgSrc  = '';
-
-  const sectDisplay = $('vl-section-display');
-  if (sectDisplay) {
-    sectDisplay.style.opacity   = '0';
-    sectDisplay.style.transform = 'translateY(18px)';
-    setTimeout(() => {
-      _vlRenderCategory(_vlCurCatIdx);
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        sectDisplay.style.opacity   = '1';
-        sectDisplay.style.transform = 'translateY(0)';
-        _vlHighlight(0);
-      }));
-    }, 360);
-  } else {
-    _vlRenderCategory(_vlCurCatIdx);
-    _vlHighlight(0);
-  }
-
-  if (!_vlPaused) {
-    _vlTimer = setTimeout(_vlStep, ITEM_DURATION + 1000);
-  }
-}
-window._vlNextCat = _vlNextCat;
-
-function _vlPause() {
-  _vlPaused = true;
-  clearTimeout(_vlTimer);
-  clearTimeout(_vlPauseTimer2);
-  _vlPauseTimer2 = setTimeout(_vlResume, PAUSE_DURATION);
-}
-
-function _vlResume() {
-  _vlPaused = false;
-  clearTimeout(_vlPauseTimer2);
-  _vlHighlight(_vlCurProdIdx);
-  _vlTimer = setTimeout(_vlStep, ITEM_DURATION);
-}
-
-/* إعادة بناء عند تغيير الإعدادات من الريموت */
-function _vlRebuildIfActive() {
-  const vl = document.getElementById('screen-vertical');
-  if (vl && vl.style.display !== 'none') {
-    clearTimeout(_vlTimer);
-    _vlBuildCats();
-    _vlStart();
-  }
-}
 
 /* ════════════════════════════════════════════════════════
    INIT
 ════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   MAINTENANCE MODE — وضع الصيانة
+════════════════════════════════════════════════════════ */
+function _escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _showMaintenanceScreen() {
+  const msg = localStorage.getItem(LS_MAINTENANCE_MSG) || 'نعود قريباً — We\'ll be back soon';
+  let el = document.getElementById('maintenance-screen');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'maintenance-screen';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <div class="maintenance-content">
+      <div class="maintenance-icon"><i class="fa-solid fa-wrench"></i></div>
+      <div class="maintenance-msg">${_escHtml(msg)}</div>
+      <div class="maintenance-sub">يرجى المتابعة قريباً</div>
+    </div>`;
+  el.style.display = 'flex';
+}
+function _hideMaintenanceScreen() {
+  const el = document.getElementById('maintenance-screen');
+  if (el) el.style.display = 'none';
+}
+window._showMaintenanceScreen = _showMaintenanceScreen;
+window._hideMaintenanceScreen = _hideMaintenanceScreen;
+
 document.addEventListener('DOMContentLoaded', () => {
+  /* ── وضع الصيانة: تحقق أولاً ── */
+  if (localStorage.getItem(LS_MAINTENANCE) === 'true') {
+    _showMaintenanceScreen();
+    fitScreenToViewport();
+    // استمر في التهيئة لدعم المزامنة (إيقاف الصيانة من جهاز آخر)
+  }
+
   /* تحديد وضع العرض */
   const _layout = localStorage.getItem(LS_LAYOUT) || 'horizontal';
+  _applyOrientationLock(_layout);   // قفل اتجاه الشاشة (Android) / السماح بالدوران (iOS)
   const _screenH = document.querySelector('.screen:not(#screen-vertical)');
   const _screenV = document.getElementById('screen-vertical');
 
@@ -1607,6 +1934,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (_layout !== 'vertical') {
     // ── الوضع الأفقي (كما هو) ──
+    document.body.classList.toggle('lang-en', menuLang === 'en');
+    const _langBtn = $('header-lang-btn');
+    if (_langBtn) _langBtn.classList.toggle('lang-active', menuLang === 'en');
+
     renderRestaurantInfo();
     renderCategoryTabs();
     _loadBadges();
@@ -1656,11 +1987,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Detect user interaction on the menu area
     const menuArea = $('menu-items-area');
     if (menuArea) {
-      menuArea.addEventListener('touchstart', pauseAutoScroll, { passive: true });
+      menuArea.addEventListener('touchstart', () => {
+        _userTouching = true;
+        progScroll = false;   // أي تمرير بعد لمس العميل هو تمرير يدوي
+        pauseAutoScroll();
+      }, { passive: true });
+      const _touchDone = () => { _userTouching = false; pauseAutoScroll(); };
+      menuArea.addEventListener('touchend',    _touchDone, { passive: true });
+      menuArea.addEventListener('touchcancel', _touchDone, { passive: true });
       menuArea.addEventListener('touchmove',  pauseAutoScroll, { passive: true });
       menuArea.addEventListener('wheel',      pauseAutoScroll, { passive: true });
       menuArea.addEventListener('scroll', () => {
-        if (!progScroll) pauseAutoScroll();
+        if (progScroll) {
+          // التمرير البرمجي ما زال جارياً — أنهِه بعد 150ms من آخر حدث scroll
+          clearTimeout(_progEndTimer);
+          _progEndTimer = setTimeout(() => { progScroll = false; }, 150);
+          return;
+        }
+        pauseAutoScroll();
       }, { passive: true });
     }
 
@@ -1681,10 +2025,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const dx = e.changedTouches[0].clientX - swipeStartX;
         const dy = e.changedTouches[0].clientY - swipeStartY;
         if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx)) return;
+        // لا تسمح بالسحب إذا كانت شريحة مثبتة
+        if (_devPinnedSlide !== null && !isNaN(_devPinnedSlide)) return;
         if (dx < 0) goToSlide((curSlide + 1) % slides.length);
         else        goToSlide((curSlide - 1 + slides.length) % slides.length);
       }, { passive: true });
     }
+
+    // أعد حساب مسافة نهاية القائمة بعد تحميل الخطوط والصور — الحساب الأول
+    // يتم قبلها فيتغيّر ارتفاع البطاقات لاحقاً وتنحرف مواضع السكرول
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fixScrollablePadding);
+    window.addEventListener('load', fixScrollablePadding, { once: true });
 
     // Start auto-scroll
     setTimeout(startAutoScroll, 900);
@@ -1705,9 +2056,118 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // أوامر الكاشير الفورية (عرض منتج، لعبة، إغلاق نافذة…)
+  if (window.DuoSync && typeof window.DuoSync.onAction === 'function') {
+    const _cashierStartTs = Date.now();
+    window.DuoSync.onAction(v => _executeCashierAction(v), _cashierStartTs);
+  }
+
   // مؤشر البطارية (مشترك)
   initBattery();
+
+  // تسجيل حضور هذه الشاشة لدى الكاشير (اسم + بطارية + شبكة)
+  _initDevicePresence();
+
+  // صورة المنتجات الجديدة — تُفعَّل/تُخفى لهذا الجهاز تحديداً من التحكم/الكاشير
+  _initNewProductsOverlay();
 });
+
+/* ════════════════════════════════════════════════════════
+   DEVICE PRESENCE — تسجيل هذه الشاشة لدى الكاشير
+════════════════════════════════════════════════════════ */
+function _duoDeviceId() {
+  let id = localStorage.getItem('duo_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('duo_device_id', id);
+  }
+  return id;
+}
+
+function _duoDevicePlatform() {
+  const ua = navigator.userAgent || '';
+  if (/iPad/i.test(ua))    return 'iPad';
+  if (/iPhone/i.test(ua))  return 'iPhone';
+  if (/Android/i.test(ua)) return 'Android';
+  return 'Desktop';
+}
+
+function _duoNetType() {
+  const c = navigator.connection || navigator.webkitConnection || navigator.mozConnection;
+  return c && c.effectiveType ? c.effectiveType.toUpperCase() : '—';
+}
+
+let _presBattery = null, _presCharging = false;
+
+function _initDevicePresence() {
+  if (!window.DuoSync || typeof window.DuoSync.presenceStart !== 'function') return;
+  window.DuoSync.presenceStart(_duoDeviceId(), {
+    platform: _duoDevicePlatform(),
+    netType:  _duoNetType(),
+    battery:  _presBattery,
+    batteryCharging: _presCharging,
+  });
+  // نبضة دورية لتحديث "آخر ظهور" وحالة الشبكة حتى دون تغيّر البطارية
+  setInterval(() => {
+    if (!window.DuoSync || typeof window.DuoSync.presenceUpdate !== 'function') return;
+    window.DuoSync.presenceUpdate({
+      battery: _presBattery, batteryCharging: _presCharging,
+      netType: _duoNetType(), online: true,
+    });
+  }, 25000);
+}
+
+/* ════════════════════════════════════════════════════════
+   NEW PRODUCTS OVERLAY — صورة فوق المنيو، خاصة بهذا الجهاز
+   التحكم الأساسي: لوحة التحكم على نفس هذا الجهاز (newProductsVisible)
+   التحكم الثانوي السريع: نفس الحقل من شاشة الكاشير عن بُعد
+════════════════════════════════════════════════════════ */
+let _npOverlayOn   = null; // آخر حالة فعلية معروفة — لتفادي إعادة العرض عند كل نبضة حضور دورية
+let _npReshowTimer = null; // مؤقّت إعادة الإظهار التلقائي بعد ضغط العميل
+
+function showNewProductsOverlay() {
+  const el = document.getElementById('new-products-overlay');
+  if (!el) return;
+  clearTimeout(_npReshowTimer);
+  el.classList.remove('closing');
+  el.style.display = 'flex';
+}
+
+function hideNewProductsOverlay() {
+  const el = document.getElementById('new-products-overlay');
+  if (!el || el.style.display === 'none') return;
+  el.classList.add('closing');
+  setTimeout(() => { el.style.display = 'none'; el.classList.remove('closing'); }, 300);
+}
+window.showNewProductsOverlay = showNewProductsOverlay;
+window.hideNewProductsOverlay = hideNewProductsOverlay;
+
+/* يُستدعى عند ضغط العميل (على الصورة أو زر "عرض المنيو") — يخفيها، وإن كانت
+   "مدة إعادة الإظهار" مضبوطة من لوحة التحكم (> 0) يعيدها تلقائياً بعد تلك المدة،
+   طالما لم يُطفئها الكاشير/لوحة التحكم عن بُعد في هذه الأثناء */
+function dismissNewProductsOverlay() {
+  hideNewProductsOverlay();
+  clearTimeout(_npReshowTimer);
+  const delaySec = parseInt(localStorage.getItem('duo_np_reshow_delay') || '0', 10) || 0;
+  if (delaySec > 0) {
+    _npReshowTimer = setTimeout(() => {
+      if (_npOverlayOn) showNewProductsOverlay();
+    }, delaySec * 1000);
+  }
+}
+window.dismissNewProductsOverlay = dismissNewProductsOverlay;
+
+function _initNewProductsOverlay() {
+  if (!window.DuoSync || typeof window.DuoSync.watchDevice !== 'function') return;
+  window.DuoSync.watchDevice(_duoDeviceId(), v => {
+    const on = !!(v && v.newProductsVisible);
+    if (on === _npOverlayOn) return;   // لم تتغيّر الحالة فعلياً (مجرد تحديث حضور دوري) — تجاهل
+    _npOverlayOn = on;
+    clearTimeout(_npReshowTimer);      // أي أمر عن بُعد (كاشير/تحكم) يُلغي مؤقّت إعادة الإظهار المحلي
+    if (on) showNewProductsOverlay();
+    else    hideNewProductsOverlay();
+  });
+}
 
 /* ════════════════════════════════════════════════════════
    BATTERY STATUS
@@ -1726,6 +2186,12 @@ function initBattery() {
 function _updateBattery(bat) {
   const pct      = Math.round(bat.level * 100);
   const charging = bat.charging;
+
+  _presBattery  = pct;
+  _presCharging = charging;
+  if (window.DuoSync && typeof window.DuoSync.presenceUpdate === 'function') {
+    window.DuoSync.presenceUpdate({ battery: pct, batteryCharging: charging });
+  }
 
   // لون حسب الحالة
   const color =

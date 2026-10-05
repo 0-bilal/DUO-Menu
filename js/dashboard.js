@@ -13,6 +13,8 @@ const SS_DISCOUNT = 'duo_discount_hidden';
 const SS_PHONE    = 'duo_phone_hidden';
 const SS_GAMES    = 'duo_games_hidden';
 const SS_QRMENU   = 'duo_qrmenu_hidden';
+const SS_LANGBTN  = 'duo_langbtn_hidden';
+const SS_MEALPRICE = 'duo_mealprice_hidden';
 const SS_VARIANTS = 'duo_hidden_variants';
 const LS_BADGES      = 'duo_badges';
 const LS_STATS_PFX   = 'duo_stats_';
@@ -28,6 +30,24 @@ const LS_SCALE_W    = 'duo_screen_w';
 const LS_SCALE_H    = 'duo_screen_h';
 const LS_LAYOUT     = 'duo_menu_layout';   // 'horizontal' | 'vertical'
 
+/* ── مفاتيح إعدادات السكرول ── */
+const LS_AUTO_SCROLL          = 'duo_auto_scroll';
+const LS_ITEM_DURATION_KEY    = 'duo_item_duration';
+const LS_PAUSE_DURATION_KEY   = 'duo_pause_duration';
+const LS_OVERLAY_DURATION_KEY = 'duo_overlay_duration';
+
+/* ── مفاتيح إعدادات Overlay/Crossfade ── */
+const LS_CROSSFADE_DUR     = 'duo_crossfade_dur';
+const LS_OV_CHANGE_DUR     = 'duo_overlay_change_dur';
+const LS_OV_CLOSE_DUR      = 'duo_overlay_close_dur';
+
+/* ── مفاتيح الصيانة والشرائح والجهاز ── */
+const LS_MAINTENANCE       = 'duo_maintenance';
+const LS_MAINTENANCE_MSG   = 'duo_maintenance_msg';
+const LS_SLIDE_DURATIONS   = 'duo_slide_durations';      // JSON {idx: ms}
+const LS_PINNED_SLIDE      = 'duo_pinned_slide';         // رقم الشريحة المثبتة أو null
+const LS_LOCK_TIMEOUT      = 'duo_lock_timeout';         // دقائق (0 = معطّل)
+
 /* ── الحالة ── */
 let _hiddenItems    = new Set();
 let _hiddenSlides   = new Set();
@@ -36,10 +56,25 @@ let _discountHidden = false;
 let _phoneHidden    = false;
 let _gamesHidden    = false;
 let _qrmenuHidden   = false;
+let _langBtnHidden  = false;
+let _mealPriceHidden = false;
 let _badges         = {};
 let _tempHide       = {};   // { "key": expiryMs }
 let _scrollSkip     = new Set();
 let _catSkip        = new Set();
+let _autoScroll      = true;
+let _itemDuration    = 3500;
+let _pauseDuration   = 12000;
+let _overlayDuration = 8000;
+let _crossfadeDur    = 520;
+let _ovChangeDur     = 260;
+let _ovCloseDur      = 430;
+let _maintenanceOn   = false;
+let _maintenanceMsg  = '';
+let _slideDurations  = {};   // {idx: ms}
+let _pinnedSlide     = null; // null = لا تثبيت | رقم = الشريحة المثبتة
+let _lockTimeout     = 0;    // دقائق
+let _statsView       = 'today'; // 'today' | 'week'
 
 /* ── شارات ── */
 const BADGE_META = {
@@ -55,20 +90,38 @@ const _key = (catId, nameAr) => catId + '||' + nameAr;
 ════════════════════════════════════════════════ */
 function loadSettings() {
   try {
-    _hiddenItems    = new Set(JSON.parse(sessionStorage.getItem(SS_ITEMS)    || '[]'));
-    _hiddenSlides   = new Set(JSON.parse(sessionStorage.getItem(SS_SLIDES)   || '[]').map(String));
-    _hiddenVariants = new Set(JSON.parse(sessionStorage.getItem(SS_VARIANTS) || '[]'));
-    _discountHidden = sessionStorage.getItem(SS_DISCOUNT) === 'true';
-    _phoneHidden    = sessionStorage.getItem(SS_PHONE)    === 'true';
-    _gamesHidden    = sessionStorage.getItem(SS_GAMES)   === 'true';
-    _qrmenuHidden   = sessionStorage.getItem(SS_QRMENU) === 'true';
+    _hiddenItems    = new Set(JSON.parse(localStorage.getItem(SS_ITEMS)    || '[]'));
+    _hiddenSlides   = new Set(JSON.parse(localStorage.getItem(SS_SLIDES)   || '[]').map(String));
+    _hiddenVariants = new Set(JSON.parse(localStorage.getItem(SS_VARIANTS) || '[]'));
+    _discountHidden = localStorage.getItem(SS_DISCOUNT) === 'true';
+    _phoneHidden    = localStorage.getItem(SS_PHONE)    === 'true';
+    _gamesHidden    = localStorage.getItem(SS_GAMES)   === 'true';
+    _qrmenuHidden   = localStorage.getItem(SS_QRMENU) === 'true';
+    _langBtnHidden  = localStorage.getItem(SS_LANGBTN) === 'true';
+    _mealPriceHidden = localStorage.getItem(SS_MEALPRICE) === 'true';
     _badges         = JSON.parse(localStorage.getItem(LS_BADGES) || '{}');
     try { _tempHide = JSON.parse(localStorage.getItem(LS_TEMP_HIDE) || '{}'); } catch { _tempHide = {}; }
     _scrollSkip = new Set(JSON.parse(localStorage.getItem(LS_SCROLL_SKIP) || '[]'));
     _catSkip    = new Set(JSON.parse(localStorage.getItem(LS_CAT_SKIP)    || '[]'));
+    _autoScroll      = (localStorage.getItem(LS_AUTO_SCROLL) ?? 'true') !== 'false';
+    _itemDuration    = parseInt(localStorage.getItem(LS_ITEM_DURATION_KEY)    || '3500',  10);
+    _pauseDuration   = parseInt(localStorage.getItem(LS_PAUSE_DURATION_KEY)   || '12000', 10);
+    _overlayDuration = parseInt(localStorage.getItem(LS_OVERLAY_DURATION_KEY) || '8000',  10);
+    _crossfadeDur    = parseInt(localStorage.getItem(LS_CROSSFADE_DUR)        || '520',   10);
+    _ovChangeDur     = parseInt(localStorage.getItem(LS_OV_CHANGE_DUR)        || '260',   10);
+    _ovCloseDur      = parseInt(localStorage.getItem(LS_OV_CLOSE_DUR)         || '430',   10);
+    _maintenanceOn   = localStorage.getItem(LS_MAINTENANCE)    === 'true';
+    _maintenanceMsg  = localStorage.getItem(LS_MAINTENANCE_MSG) || '';
+    _lockTimeout     = parseInt(localStorage.getItem(LS_LOCK_TIMEOUT)          || '0',     10);
+    try { _slideDurations = JSON.parse(localStorage.getItem(LS_SLIDE_DURATIONS) || '{}'); } catch { _slideDurations = {}; }
+    const _ps = localStorage.getItem(LS_PINNED_SLIDE);
+    _pinnedSlide = (_ps !== null && _ps !== '') ? parseInt(_ps, 10) : null;
   } catch (e) {
     _hiddenItems = new Set(); _hiddenSlides = new Set(); _hiddenVariants = new Set();
     _badges = {}; _tempHide = {}; _scrollSkip = new Set(); _catSkip = new Set();
+    _autoScroll = true; _itemDuration = 3500; _pauseDuration = 12000; _overlayDuration = 8000;
+    _crossfadeDur = 520; _ovChangeDur = 260; _ovCloseDur = 430;
+    _maintenanceOn = false; _maintenanceMsg = ''; _slideDurations = {}; _pinnedSlide = null; _lockTimeout = 0;
   }
 }
 
@@ -92,8 +145,12 @@ const TAB_TITLES = {
   slides:   'الشرائح الترويجية',
   products: 'المنتجات',
   stats:    'الإحصائيات',
+  scroll:   'إعدادات السكرول',
+  device:   'إدارة الجهاز',
   screen:   'ضبط الشاشة',
   pairing:  'ربط الأجهزة',
+  newproducts: 'منتجات جديدة',
+  statusimg:   'صورة التلفاز للمنيو (9:16)',
 };
 let _activeTab = 'header';
 
@@ -117,8 +174,12 @@ function showTab(tab) {
     case 'slides':   renderSlidesTab(body);   break;
     case 'products': renderProductsTab(body); break;
     case 'stats':    renderStatsTab(body);    break;
+    case 'scroll':   renderScrollTab(body);   break;
+    case 'device':   renderDeviceTab(body);   break;
     case 'screen':   renderScreenTab(body);   break;
     case 'pairing':  renderPairingTab(body);  break;
+    case 'newproducts': renderNewProductsTab(body); break;
+    case 'statusimg':   renderStatusImageTab(body); break;
   }
 }
 window.showTab = showTab;
@@ -155,7 +216,7 @@ function renderHeaderTab(body) {
       <label class="row">
         <div class="row-icon" style="background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.25);color:#3b82f6"><i class="fa-solid fa-gamepad"></i></div>
         <div class="row-label">
-          إظهار زر الألعاب «مَن يدفع؟»
+          إظهار زر الألعاب مَن يدفع؟
           <small>الزر الأزرق الذي يفتح شاشة الألعاب</small>
         </div>
         <span class="toggle">
@@ -166,11 +227,33 @@ function renderHeaderTab(body) {
       <label class="row">
         <div class="row-icon" style="background:rgba(6,120,100,.15);border-color:rgba(20,184,166,.30);color:rgba(20,184,166,.90)"><i class="fa-solid fa-qrcode"></i></div>
         <div class="row-label">
-          إظهار زر «منيو الجوال»
+         إظهار زر منيو الجوال
           <small>يعرض QR code على لوحة الشرائح ليمسحه العميل بهاتفه</small>
         </div>
         <span class="toggle">
           <input type="checkbox" ${!_qrmenuHidden ? 'checked' : ''} onchange="toggleQRMenu(this.checked)">
+          <span class="slider"></span>
+        </span>
+      </label>
+      <label class="row">
+        <div class="row-icon" style="background:rgba(124,58,237,.15);border-color:rgba(167,139,250,.35);color:rgba(196,181,253,.95)"><i class="fa-solid fa-language"></i></div>
+        <div class="row-label">
+         إظهار زر ترجمة المنيو
+          <small>الزر البنفسجي الذي يترجم المنيو للعميل من العربي للإنجليزي</small>
+        </div>
+        <span class="toggle">
+          <input type="checkbox" ${!_langBtnHidden ? 'checked' : ''} onchange="toggleLangBtn(this.checked)">
+          <span class="slider"></span>
+        </span>
+      </label>
+      <label class="row">
+        <div class="row-icon" style="background:rgba(190,30,45,.14);border-color:rgba(212,36,53,.32);color:#e05264"><i class="fa-solid fa-utensils"></i></div>
+        <div class="row-label">
+          إظهار سعر الوجبة
+          <small>دائرة سعر الوجبة (برجر + بطاطس + مشروب) بجانب سعر البرجر في المنيو وفي تفاصيل المنتج</small>
+        </div>
+        <span class="toggle">
+          <input type="checkbox" ${!_mealPriceHidden ? 'checked' : ''} onchange="toggleMealPrice(this.checked)">
           <span class="slider"></span>
         </span>
       </label>
@@ -182,18 +265,34 @@ function renderHeaderTab(body) {
 ════════════════════════════════════════════════ */
 function renderSlidesTab(body) {
   const visCount = slides.filter((_, i) => !_hiddenSlides.has(String(i))).length;
+  const hasPinned = _pinnedSlide !== null && !isNaN(_pinnedSlide);
   let html = `<div class="card">
     <div class="card-title">
       <i class="fa-solid fa-images"></i> الشرائح الترويجية
       <span class="count">${visCount}/${slides.length}</span>
     </div>`;
+  if (hasPinned) {
+    const pinnedName = slides[_pinnedSlide]?.titleAr || ('شريحة ' + (_pinnedSlide + 1));
+    html += `<div class="slide-pin-banner">
+      <i class="fa-solid fa-thumbtack"></i>
+      مثبّتة: <strong>${pinnedName}</strong>
+      <span class="slide-pin-banner-hint">السلايدشو متوقف</span>
+    </div>`;
+  }
   slides.forEach((sl, i) => {
-    const visible = !_hiddenSlides.has(String(i));
-    html += `<label class="row ${visible ? '' : 'row--off'}">
-      <div class="row-icon row-icon--num">${i + 1}</div>
+    const visible  = !_hiddenSlides.has(String(i));
+    const defDur   = sl.duration ?? 5000;
+    const curDur   = (_slideDurations[String(i)] !== undefined) ? _slideDurations[String(i)] : defDur;
+    const durSec   = (curDur / 1000).toFixed(1).replace('.0', '');
+    const isCustom = _slideDurations[String(i)] !== undefined;
+    const isPinned = _pinnedSlide === i;
+    html += `
+    <label class="row ${visible ? '' : 'row--off'} ${isPinned ? 'row--pinned' : ''}">
+      <div class="row-icon row-icon--num">${isPinned ? '<i class="fa-solid fa-thumbtack" style="font-size:12px;color:#f5c200"></i>' : (i + 1)}</div>
       <div class="row-label">
         ${sl.titleAr || 'شريحة ' + (i + 1)}
         ${sl.titleEn ? `<small>${sl.titleEn}</small>` : ''}
+        ${isPinned ? `<small class="slide-pin-active-label"><i class="fa-solid fa-thumbtack"></i> مثبّتة</small>` : ''}
       </div>
       <span class="status ${visible ? 'status--on' : 'status--off'}">
         ${visible ? '<i class="fa-solid fa-eye"></i> ظاهر' : '<i class="fa-solid fa-eye-slash"></i> مخفي'}
@@ -202,17 +301,54 @@ function renderSlidesTab(body) {
         <input type="checkbox" ${visible ? 'checked' : ''} onchange="toggleSlide(${i}, this.checked)">
         <span class="slider"></span>
       </span>
-    </label>`;
+    </label>
+    <div class="slide-dur-row">
+      <i class="fa-solid fa-stopwatch slide-dur-icon"></i>
+      <span class="slide-dur-label">مدة العرض</span>
+      <button class="slide-dur-btn" onclick="adjustSlideDur(${i}, -500)" ${curDur <= 1000 ? 'disabled' : ''}>−</button>
+      <span class="slide-dur-val" id="slide-dur-val-${i}">${durSec} ث</span>
+      <button class="slide-dur-btn" onclick="adjustSlideDur(${i}, 500)" ${curDur >= 30000 ? 'disabled' : ''}>+</button>
+      ${isCustom ? `<button class="slide-dur-reset" onclick="resetSlideDur(${i})" title="إعادة للافتراضي">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>` : ''}
+      <button class="slide-pin-btn ${isPinned ? 'slide-pin-btn--active' : ''}"
+        onclick="togglePinnedSlide(${i})"
+        title="${isPinned ? 'إلغاء التثبيت واستئناف السلايدشو' : 'تثبيت هذه الشريحة وإيقاف السلايدشو'}">
+        <i class="fa-solid fa-thumbtack"></i>
+        ${isPinned ? 'إلغاء التثبيت' : 'تثبيت'}
+      </button>
+    </div>`;
   });
   html += `</div>`;
   body.innerHTML = html;
 }
 
+function togglePinnedSlide(idx) {
+  if (_pinnedSlide === idx) {
+    // إلغاء التثبيت
+    _pinnedSlide = null;
+    localStorage.removeItem(LS_PINNED_SLIDE);
+  } else {
+    // تثبيت هذه الشريحة
+    _pinnedSlide = idx;
+    localStorage.setItem(LS_PINNED_SLIDE, String(idx));
+  }
+  _syncPush();
+  renderSlidesTab($('dash-body'));
+}
+window.togglePinnedSlide = togglePinnedSlide;
+
 /* ════════════════════════════════════════════════
    تبويب: المنتجات
 ════════════════════════════════════════════════ */
+/* الوقت بساعة خادم Firebase (موحّد بين الأجهزة) إن توفّر */
+function _dashNow() {
+  return (window.DuoSync && typeof window.DuoSync.serverNow === 'function')
+    ? window.DuoSync.serverNow() : Date.now();
+}
+
 function renderProductsTab(body) {
-  const now = Date.now();
+  const now = _dashNow();
   let html = '';
   menuCategories.forEach(cat => {
     const visCount  = cat.items.filter(it => !_hiddenItems.has(_key(cat.id, it.nameAr))).length;
@@ -321,43 +457,658 @@ function renderProductsTab(body) {
 }
 
 /* ════════════════════════════════════════════════
-   تبويب: الإحصائيات
+   تبويب: الإحصائيات (متقدمة)
 ════════════════════════════════════════════════ */
-function renderStatsTab(body) {
-  const stats   = _getStats();
-  const entries = Object.entries(stats).sort((a, b) => b[1] - a[1]);
-  const total   = entries.reduce((s, [, c]) => s + c, 0);
-  const today   = new Date().toLocaleDateString('ar-SA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+function _get7DayData() {
+  const result = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const key   = LS_STATS_PFX + dateStr;
+    const stats = (() => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; } })();
+    const total = Object.values(stats).reduce((s, c) => s + c, 0);
+    result.push({
+      date: d.toLocaleDateString('ar-SA', { weekday: 'short', day: 'numeric' }),
+      dateStr,
+      total,
+      stats,
+    });
+  }
+  return result;
+}
 
-  let html = `<div class="stats-header">
-    <div class="stats-date"><i class="fa-solid fa-calendar-day"></i> ${today}</div>
-    <div class="stats-total"><span>${total}</span> مشاهدة إجمالية</div>
+function renderStatsTab(body) {
+  const today = new Date().toLocaleDateString('ar-SA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // أزرار التبديل بين اليوم / 7 أيام
+  let html = `
+  <div class="stats-view-toggle">
+    <button class="stats-view-btn ${_statsView==='today'?'active':''}" onclick="setStatsView('today')">
+      <i class="fa-solid fa-calendar-day"></i> اليوم
+    </button>
+    <button class="stats-view-btn ${_statsView==='week'?'active':''}" onclick="setStatsView('week')">
+      <i class="fa-solid fa-chart-bar"></i> آخر 7 أيام
+    </button>
+    <button class="stats-export-btn" onclick="exportStatsCSV()">
+      <i class="fa-solid fa-file-csv"></i> تصدير CSV
+    </button>
   </div>`;
 
-  if (!entries.length) {
-    html += `<div class="stats-empty">
-      <i class="fa-solid fa-chart-line"></i>
-      <p>لا توجد إحصائيات لهذا اليوم بعد</p>
-      <small>تُسجَّل المشاهدات عند فتح تفاصيل المنتجات في المنيو</small>
+  if (_statsView === 'today') {
+    /* ── عرض اليوم ── */
+    const stats   = _getStats();
+    const entries = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+    const total   = entries.reduce((s, [, c]) => s + c, 0);
+
+    html += `<div class="stats-header">
+      <div class="stats-date"><i class="fa-solid fa-calendar-day"></i> ${today}</div>
+      <div class="stats-total"><span>${total}</span> مشاهدة إجمالية</div>
     </div>`;
+
+    if (!entries.length) {
+      html += `<div class="stats-empty">
+        <i class="fa-solid fa-chart-line"></i>
+        <p>لا توجد إحصائيات لهذا اليوم بعد</p>
+        <small>تُسجَّل المشاهدات عند فتح تفاصيل المنتجات في المنيو</small>
+      </div>`;
+    } else {
+      const maxVal = entries[0][1];
+      html += `<div class="card"><div class="card-title"><i class="fa-solid fa-fire"></i> الأكثر مشاهدةً</div>`;
+      entries.forEach(([k, count], idx) => {
+        const nameAr = k.split('||')[1] || k;
+        const pct    = Math.round((count / maxVal) * 100);
+        const rank   = idx === 0 ? 'rank--gold' : idx === 1 ? 'rank--silver' : idx === 2 ? 'rank--bronze' : '';
+        html += `<div class="stat-row">
+          <span class="stat-rank ${rank}">${idx + 1}</span>
+          <span class="stat-name">${nameAr}</span>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:${pct}%"></div></div>
+          <span class="stat-count">${count}</span>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
   } else {
-    const maxVal = entries[0][1];
-    html += `<div class="card"><div class="card-title"><i class="fa-solid fa-fire"></i> الأكثر مشاهدةً</div>`;
-    entries.forEach(([k, count], idx) => {
-      const nameAr = k.split('||')[1] || k;
-      const pct    = Math.round((count / maxVal) * 100);
-      const rank   = idx === 0 ? 'rank--gold' : idx === 1 ? 'rank--silver' : idx === 2 ? 'rank--bronze' : '';
-      html += `<div class="stat-row">
-        <span class="stat-rank ${rank}">${idx + 1}</span>
-        <span class="stat-name">${nameAr}</span>
-        <div class="stat-bar-wrap"><div class="stat-bar" style="width:${pct}%"></div></div>
-        <span class="stat-count">${count}</span>
+    /* ── عرض 7 أيام ── */
+    const days    = _get7DayData();
+    const weekTotal = days.reduce((s, d) => s + d.total, 0);
+    const maxDay  = Math.max(...days.map(d => d.total), 1);
+
+    // رسم بياني أعمدة
+    html += `<div class="stats-header">
+      <div class="stats-date"><i class="fa-solid fa-chart-bar"></i> آخر 7 أيام</div>
+      <div class="stats-total"><span>${weekTotal}</span> مشاهدة إجمالية</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-calendar-week"></i> مشاهدات يومية</div>
+      <div class="week-bars">`;
+
+    days.forEach(d => {
+      const pct = Math.round((d.total / maxDay) * 100);
+      const isToday = d.dateStr === new Date().toISOString().slice(0, 10);
+      html += `<div class="week-bar-wrap">
+        <div class="week-bar-col">
+          <span class="week-bar-count">${d.total || ''}</span>
+          <div class="week-bar-fill ${isToday ? 'week-bar-today' : ''}"
+               style="height:${Math.max(pct, 4)}%"></div>
+        </div>
+        <span class="week-bar-label ${isToday ? 'week-bar-label--today' : ''}">${d.date}</span>
       </div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
+
+    // أفضل المنتجات خلال 7 أيام
+    const agg = {};
+    days.forEach(d => Object.entries(d.stats).forEach(([k, c]) => { agg[k] = (agg[k] || 0) + c; }));
+    const aggEntries = Object.entries(agg).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+    if (aggEntries.length) {
+      const maxV = aggEntries[0][1];
+      html += `<div class="card"><div class="card-title"><i class="fa-solid fa-trophy"></i> الأكثر مشاهدةً (7 أيام)</div>`;
+      aggEntries.forEach(([k, count], idx) => {
+        const nameAr = k.split('||')[1] || k;
+        const pct    = Math.round((count / maxV) * 100);
+        const rank   = idx === 0 ? 'rank--gold' : idx === 1 ? 'rank--silver' : idx === 2 ? 'rank--bronze' : '';
+        html += `<div class="stat-row">
+          <span class="stat-rank ${rank}">${idx + 1}</span>
+          <span class="stat-name">${nameAr}</span>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:${pct}%"></div></div>
+          <span class="stat-count">${count}</span>
+        </div>`;
+      });
+      html += `</div>`;
+    }
   }
+
   body.innerHTML = html;
 }
+
+function setStatsView(view) {
+  _statsView = view;
+  renderStatsTab($('dash-body'));
+}
+window.setStatsView = setStatsView;
+
+function exportStatsCSV() {
+  const days = _get7DayData();
+  const allKeys = new Set();
+  days.forEach(d => Object.keys(d.stats).forEach(k => allKeys.add(k)));
+  const keysArr = [...allKeys];
+  const headers = ['التاريخ', 'الإجمالي', ...keysArr.map(k => k.split('||')[1] || k)].join(',');
+  const rows = days.map(d =>
+    [d.dateStr, d.total, ...keysArr.map(k => d.stats[k] || 0)].join(',')
+  );
+  const csv = '﻿' + [headers, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'duo_stats_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('تم تصدير الإحصائيات ✓');
+}
+window.exportStatsCSV = exportStatsCSV;
+
+/* ════════════════════════════════════════════════
+   تبويب: إعدادات السكرول
+════════════════════════════════════════════════ */
+function renderScrollTab(body) {
+  const fmtSec = ms => (ms / 1000).toFixed(1).replace('.0', '') + ' ث';
+
+  body.innerHTML = `
+
+    <!-- ══ تشغيل / إيقاف السكرول التلقائي ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-forward"></i> السكرول التلقائي</div>
+      <label class="row">
+        <div class="row-icon" style="background:rgba(190,30,45,.12);border-color:rgba(190,30,45,.25);color:var(--red)">
+          <i class="fa-solid fa-play"></i>
+        </div>
+        <div class="row-label">
+          تشغيل السكرول التلقائي
+          <small>عند التعطيل يبقى المنيو ثابتاً ولا ينتقل من منتج لآخر</small>
+        </div>
+        <span class="toggle">
+          <input type="checkbox" id="scroll-auto-toggle" ${_autoScroll ? 'checked' : ''}
+                 onchange="setAutoScroll(this.checked)">
+          <span class="slider"></span>
+        </span>
+      </label>
+    </div>
+
+    <!-- ══ زمن الانتقال بين المنتجات ══ -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fa-solid fa-gauge-high"></i> زمن الانتقال بين المنتجات
+        <span class="count" id="item-dur-val">${fmtSec(_itemDuration)}</span>
+      </div>
+      <div class="screen-note" style="margin-bottom:14px">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>المدة التي يبقى فيها كل منتج مُسلَّطاً عليه الضوء قبل الانتقال للتالي.</div>
+      </div>
+      <div class="scroll-slider-wrap">
+        <span class="scroll-slider-min">1 ث</span>
+        <input type="range" id="item-dur-slider" min="1000" max="10000" step="500"
+               value="${_itemDuration}"
+               oninput="previewItemDur(this.value)"
+               onchange="saveItemDur(this.value)">
+        <span class="scroll-slider-max">10 ث</span>
+      </div>
+      <div class="scroll-presets">
+        ${[2000,3500,5000,7000].map(v =>
+          `<button class="preset ${_itemDuration===v?'preset--active':''}"
+                   onclick="saveItemDur(${v},true)">
+             ${fmtSec(v)}
+           </button>`
+        ).join('')}
+      </div>
+    </div>
+
+    <!-- ══ فترة الانتظار بعد لمس العميل ══ -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fa-solid fa-hand-pointer"></i> فترة الانتظار بعد تفاعل العميل
+        <span class="count" id="pause-dur-val">${fmtSec(_pauseDuration)}</span>
+      </div>
+      <div class="screen-note" style="margin-bottom:14px">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>عندما يلمس العميل الشاشة أو يتصفح يدوياً، ينتظر الموقع هذه المدة قبل استئناف السكرول التلقائي.</div>
+      </div>
+      <div class="scroll-slider-wrap">
+        <span class="scroll-slider-min">5 ث</span>
+        <input type="range" id="pause-dur-slider" min="5000" max="60000" step="1000"
+               value="${_pauseDuration}"
+               oninput="previewPauseDur(this.value)"
+               onchange="savePauseDur(this.value)">
+        <span class="scroll-slider-max">60 ث</span>
+      </div>
+      <div class="scroll-presets">
+        ${[8000,12000,20000,30000].map(v =>
+          `<button class="preset ${_pauseDuration===v?'preset--active':''}"
+                   onclick="savePauseDur(${v},true)">
+             ${fmtSec(v)}
+           </button>`
+        ).join('')}
+      </div>
+    </div>
+
+    <!-- ══ زمن عرض تفاصيل المنتج ══ -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fa-solid fa-window-maximize"></i> زمن إغلاق تفاصيل المنتج
+        <span class="count" id="overlay-dur-val">${fmtSec(_overlayDuration)}</span>
+      </div>
+      <div class="screen-note" style="margin-bottom:14px">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>عندما يضغط العميل على منتج ليرى تفاصيله وصورته، تُغلَق النافذة تلقائياً بعد هذه المدة وتعود حركة السكرول.</div>
+      </div>
+      <div class="scroll-slider-wrap">
+        <span class="scroll-slider-min">3 ث</span>
+        <input type="range" id="overlay-dur-slider" min="3000" max="30000" step="1000"
+               value="${_overlayDuration}"
+               oninput="previewOverlayDur(this.value)"
+               onchange="saveOverlayDur(this.value)">
+        <span class="scroll-slider-max">30 ث</span>
+      </div>
+      <div class="scroll-presets">
+        ${[5000,8000,12000,20000].map(v =>
+          `<button class="preset ${_overlayDuration===v?'preset--active':''}"
+                   onclick="saveOverlayDur(${v},true)">
+             ${fmtSec(v)}
+           </button>`
+        ).join('')}
+      </div>
+    </div>
+
+    <!-- ══ إعدادات Overlay / Crossfade ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-layer-group"></i> إعدادات نافذة المنتج</div>
+      <div class="screen-note" style="margin-bottom:14px">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>التحكم في سرعة تأثيرات التبديل داخل نافذة تفاصيل المنتج.</div>
+      </div>
+
+      <!-- تبديل الصورة -->
+      <div class="overlay-setting-row">
+        <div class="overlay-setting-label">
+          <i class="fa-solid fa-image"></i>
+          <span>مدة Crossfade الصورة</span>
+          <small>التبديل بين صور المنتجات</small>
+        </div>
+        <div class="overlay-setting-ctrl">
+          <button class="slide-dur-btn" onclick="adjustOverlaySetting('crossfade',-50)">−</button>
+          <span class="overlay-setting-val" id="ov-crossfade-val">${_crossfadeDur} ms</span>
+          <button class="slide-dur-btn" onclick="adjustOverlaySetting('crossfade',50)">+</button>
+        </div>
+      </div>
+
+      <!-- تبديل المنتج -->
+      <div class="overlay-setting-row">
+        <div class="overlay-setting-label">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>مدة تبديل المنتج</span>
+          <small>تلاشي النص عند تغيير المنتج</small>
+        </div>
+        <div class="overlay-setting-ctrl">
+          <button class="slide-dur-btn" onclick="adjustOverlaySetting('change',-20)">−</button>
+          <span class="overlay-setting-val" id="ov-change-val">${_ovChangeDur} ms</span>
+          <button class="slide-dur-btn" onclick="adjustOverlaySetting('change',20)">+</button>
+        </div>
+      </div>
+
+      <!-- إغلاق النافذة -->
+      <div class="overlay-setting-row">
+        <div class="overlay-setting-label">
+          <i class="fa-solid fa-door-closed"></i>
+          <span>مدة إغلاق النافذة</span>
+          <small>تأثير الإغلاق عند انتهاء العرض</small>
+        </div>
+        <div class="overlay-setting-ctrl">
+          <button class="slide-dur-btn" onclick="adjustOverlaySetting('close',-20)">−</button>
+          <span class="overlay-setting-val" id="ov-close-val">${_ovCloseDur} ms</span>
+          <button class="slide-dur-btn" onclick="adjustOverlaySetting('close',20)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ إعادة الضبط الافتراضي ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-rotate-left"></i> إعادة الضبط الافتراضي</div>
+      <div class="screen-auto">
+        <div class="screen-auto-desc">
+          <strong>القيم الافتراضية</strong>
+          <span>انتقال 3.5ث — انتظار 12ث — تفاصيل 8ث — Crossfade 520ms</span>
+        </div>
+        <button class="btn-reset" onclick="resetScrollDefaults()">
+          <i class="fa-solid fa-rotate-left"></i> إعادة تعيين
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/* ── دوال التحكم في السكرول ── */
+function setAutoScroll(checked) {
+  _autoScroll = checked;
+  localStorage.setItem(LS_AUTO_SCROLL, String(checked));
+  _syncPush();
+  toast(checked ? 'تم تفعيل السكرول التلقائي' : 'تم إيقاف السكرول التلقائي');
+}
+
+function previewItemDur(val) {
+  _itemDuration = parseInt(val, 10);
+  const el = document.getElementById('item-dur-val');
+  if (el) el.textContent = (_itemDuration / 1000).toFixed(1).replace('.0','') + ' ث';
+  _highlightActivePreset('scroll-presets-item', val);
+}
+function saveItemDur(val, fromPreset) {
+  _itemDuration = parseInt(val, 10);
+  localStorage.setItem(LS_ITEM_DURATION_KEY, String(_itemDuration));
+  _syncPush();
+  if (fromPreset) renderScrollTab($('dash-body'));
+  else toast('تم حفظ زمن الانتقال: ' + (_itemDuration/1000).toFixed(1) + ' ث');
+}
+
+function previewPauseDur(val) {
+  _pauseDuration = parseInt(val, 10);
+  const el = document.getElementById('pause-dur-val');
+  if (el) el.textContent = (_pauseDuration / 1000).toFixed(1).replace('.0','') + ' ث';
+}
+function savePauseDur(val, fromPreset) {
+  _pauseDuration = parseInt(val, 10);
+  localStorage.setItem(LS_PAUSE_DURATION_KEY, String(_pauseDuration));
+  _syncPush();
+  if (fromPreset) renderScrollTab($('dash-body'));
+  else toast('تم حفظ فترة الانتظار: ' + (_pauseDuration/1000).toFixed(1) + ' ث');
+}
+
+function previewOverlayDur(val) {
+  _overlayDuration = parseInt(val, 10);
+  const el = document.getElementById('overlay-dur-val');
+  if (el) el.textContent = (_overlayDuration / 1000).toFixed(1).replace('.0','') + ' ث';
+}
+function saveOverlayDur(val, fromPreset) {
+  _overlayDuration = parseInt(val, 10);
+  localStorage.setItem(LS_OVERLAY_DURATION_KEY, String(_overlayDuration));
+  _syncPush();
+  if (fromPreset) renderScrollTab($('dash-body'));
+  else toast('تم حفظ زمن التفاصيل: ' + (_overlayDuration/1000).toFixed(1) + ' ث');
+}
+
+function adjustOverlaySetting(type, delta) {
+  if (type === 'crossfade') {
+    _crossfadeDur = Math.max(100, Math.min(2000, _crossfadeDur + delta));
+    localStorage.setItem(LS_CROSSFADE_DUR, String(_crossfadeDur));
+    const el = document.getElementById('ov-crossfade-val');
+    if (el) el.textContent = _crossfadeDur + ' ms';
+  } else if (type === 'change') {
+    _ovChangeDur = Math.max(60, Math.min(800, _ovChangeDur + delta));
+    localStorage.setItem(LS_OV_CHANGE_DUR, String(_ovChangeDur));
+    const el = document.getElementById('ov-change-val');
+    if (el) el.textContent = _ovChangeDur + ' ms';
+  } else if (type === 'close') {
+    _ovCloseDur = Math.max(100, Math.min(1000, _ovCloseDur + delta));
+    localStorage.setItem(LS_OV_CLOSE_DUR, String(_ovCloseDur));
+    const el = document.getElementById('ov-close-val');
+    if (el) el.textContent = _ovCloseDur + ' ms';
+  }
+  _syncPush();
+}
+window.adjustOverlaySetting = adjustOverlaySetting;
+
+function resetScrollDefaults() {
+  _autoScroll      = true;
+  _itemDuration    = 3500;
+  _pauseDuration   = 12000;
+  _overlayDuration = 8000;
+  _crossfadeDur    = 520;
+  _ovChangeDur     = 260;
+  _ovCloseDur      = 430;
+  localStorage.setItem(LS_AUTO_SCROLL,          'true');
+  localStorage.setItem(LS_ITEM_DURATION_KEY,    '3500');
+  localStorage.setItem(LS_PAUSE_DURATION_KEY,   '12000');
+  localStorage.setItem(LS_OVERLAY_DURATION_KEY, '8000');
+  localStorage.setItem(LS_CROSSFADE_DUR,        '520');
+  localStorage.setItem(LS_OV_CHANGE_DUR,        '260');
+  localStorage.setItem(LS_OV_CLOSE_DUR,         '430');
+  _syncPush();
+  renderScrollTab($('dash-body'));
+  toast('تم إعادة تعيين إعدادات السكرول والـ Overlay');
+}
+
+window.setAutoScroll    = setAutoScroll;
+window.previewItemDur   = previewItemDur;
+window.saveItemDur      = saveItemDur;
+window.previewPauseDur  = previewPauseDur;
+window.savePauseDur     = savePauseDur;
+window.previewOverlayDur= previewOverlayDur;
+window.saveOverlayDur   = saveOverlayDur;
+window.resetScrollDefaults = resetScrollDefaults;
+
+/* ════════════════════════════════════════════════
+   تبويب: إدارة الجهاز
+════════════════════════════════════════════════ */
+function renderDeviceTab(body) {
+  const ua     = navigator.userAgent;
+  const sw     = screen.width, sh = screen.height;
+  const iw     = window.innerWidth, ih = window.innerHeight;
+  const stor   = (() => {
+    try { let s=0; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k?.startsWith('duo_')) s+=((localStorage.getItem(k)||'').length*2); } return (s/1024).toFixed(1); } catch { return '—'; }
+  })();
+
+  const lockOptions = [
+    { v:0,  label:'معطّل' },
+    { v:5,  label:'5 دقائق' },
+    { v:10, label:'10 دقائق' },
+    { v:15, label:'15 دقيقة' },
+    { v:30, label:'30 دقيقة' },
+  ];
+
+  body.innerHTML = `
+
+    <!-- ══ وضع الصيانة ══ -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fa-solid fa-wrench"></i> وضع الصيانة
+        ${_maintenanceOn ? '<span class="maintenance-badge">مُفعَّل</span>' : ''}
+      </div>
+      <label class="row">
+        <div class="row-icon" style="background:rgba(245,195,0,.12);border-color:rgba(245,195,0,.3);color:#f5c200">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="row-label">
+          تفعيل وضع الصيانة
+          <small>يوقف عرض المنيو ويظهر رسالة مخصصة على الشاشة</small>
+        </div>
+        <span class="toggle">
+          <input type="checkbox" id="maintenance-toggle" ${_maintenanceOn ? 'checked' : ''}
+                 onchange="setMaintenance(this.checked)">
+          <span class="slider"></span>
+        </span>
+      </label>
+      <div class="pair-field" style="margin-top:12px">
+        <label>نص الرسالة</label>
+        <input type="text" id="maintenance-msg-input"
+               value="${_maintenanceMsg || ''}"
+               placeholder="نعود قريباً — We'll be back soon"
+               oninput="saveMaintMsg(this.value)">
+      </div>
+    </div>
+
+    <!-- ══ قفل تلقائي ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-lock"></i> قفل تلقائي للوحة التحكم</div>
+      <div class="screen-note" style="margin-bottom:14px">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>بعد فترة الخمول المحددة يُعاد التوجيه تلقائياً لصفحة المنيو، ولفتح لوحة التحكم تحتاج الرقم السري من جديد.</div>
+      </div>
+      <div class="lock-opts">
+        ${lockOptions.map(o => `
+          <button class="preset ${_lockTimeout===o.v?'preset--active':''}"
+                  onclick="setLockTimeout(${o.v})">
+            ${o.label}
+          </button>`).join('')}
+      </div>
+    </div>
+
+    <!-- ══ تصدير / استيراد الإعدادات ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-cloud-arrow-up"></i> تصدير / استيراد الإعدادات</div>
+      <div class="device-actions">
+        <button class="btn-apply" onclick="exportSettings()">
+          <i class="fa-solid fa-download"></i> تصدير كـ JSON
+        </button>
+        <label class="btn-apply" style="cursor:pointer">
+          <i class="fa-solid fa-upload"></i> استيراد
+          <input type="file" accept=".json" style="display:none"
+                 onchange="importSettings(this)">
+        </label>
+      </div>
+      <div class="pair-adv-note" style="margin-top:12px">
+        <i class="fa-solid fa-circle-info"></i>
+        يُصدَّر ملف JSON يحتوي كل إعدادات المنيو. يمكن استيراده على نفس الجهاز أو جهاز آخر لنقل الإعدادات.
+      </div>
+    </div>
+
+    <!-- ══ إعادة ضبط المصنع ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-trash-can" style="color:#f87171"></i> إعادة ضبط المصنع</div>
+      <div class="screen-auto">
+        <div class="screen-auto-desc">
+          <strong style="color:#f87171">مسح جميع الإعدادات</strong>
+          <span>يحذف كل إعدادات المنيو والإخفاء والشارات والإحصائيات نهائياً.</span>
+        </div>
+        <button class="btn-factory-reset" id="factory-reset-btn" onclick="factoryResetStep(this)">
+          <i class="fa-solid fa-trash-can"></i> إعادة تعيين
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ معلومات الجهاز ══ -->
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-circle-info"></i> معلومات الجهاز</div>
+      <div class="device-info-grid">
+        <div class="device-info-item">
+          <span class="di-label">دقة الشاشة</span>
+          <span class="di-val">${sw} × ${sh}</span>
+        </div>
+        <div class="device-info-item">
+          <span class="di-label">حجم النافذة</span>
+          <span class="di-val">${iw} × ${ih}</span>
+        </div>
+        <div class="device-info-item">
+          <span class="di-label">مساحة الإعدادات</span>
+          <span class="di-val">${stor} KB</span>
+        </div>
+        <div class="device-info-item">
+          <span class="di-label">المتصفح</span>
+          <span class="di-val di-val--sm">${ua.includes('iPad')||ua.includes('iPhone')?'iOS Safari':ua.includes('Chrome')?'Chrome':ua.includes('Firefox')?'Firefox':'Other'}</span>
+        </div>
+        <div class="device-info-item" style="grid-column:1/-1">
+          <span class="di-label">User Agent</span>
+          <span class="di-val di-val--xs">${ua.slice(0, 80)}…</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ── وضع الصيانة ── */
+function setMaintenance(on) {
+  _maintenanceOn = on;
+  localStorage.setItem(LS_MAINTENANCE, String(on));
+  _syncPush();
+  renderDeviceTab($('dash-body'));
+  toast(on ? 'تم تفعيل وضع الصيانة' : 'تم إيقاف وضع الصيانة');
+}
+function saveMaintMsg(val) {
+  _maintenanceMsg = val;
+  localStorage.setItem(LS_MAINTENANCE_MSG, val);
+  _syncPush();
+}
+window.setMaintenance = setMaintenance;
+window.saveMaintMsg   = saveMaintMsg;
+
+/* ── قفل تلقائي ── */
+let _lockTimer = null;
+function setLockTimeout(minutes) {
+  _lockTimeout = minutes;
+  localStorage.setItem(LS_LOCK_TIMEOUT, String(minutes));
+  _setupAutoLock();
+  renderDeviceTab($('dash-body'));
+  toast(minutes > 0 ? `قفل تلقائي بعد ${minutes} دقيقة` : 'تم تعطيل القفل التلقائي');
+}
+function _setupAutoLock() {
+  clearTimeout(_lockTimer);
+  if (_lockTimeout <= 0) return;
+  const reset = () => {
+    clearTimeout(_lockTimer);
+    _lockTimer = setTimeout(() => {
+      try { sessionStorage.removeItem('duo_admin_ok'); } catch (e) {}
+      window.location.href = 'index.html';
+    }, _lockTimeout * 60000);
+  };
+  ['mousedown', 'touchstart', 'keydown', 'scroll', 'click'].forEach(ev =>
+    document.addEventListener(ev, reset, { passive: true, once: false })
+  );
+  reset();
+}
+window.setLockTimeout = setLockTimeout;
+
+/* ── تصدير الإعدادات ── */
+function exportSettings() {
+  const data = { version: '1.1', exportedAt: new Date().toISOString(), ls: {}, ss: {} };
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith('duo_')) data.ls[k] = localStorage.getItem(k);
+  }
+  // (مفاتيح الإخفاء أصبحت في localStorage — تُصدَّر ضمن data.ls أعلاه)
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href = url;
+  a.download = 'duo_settings_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+  toast('تم تصدير الإعدادات ✓');
+}
+/* ── استيراد الإعدادات ── */
+function importSettings(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.ls && !data.ss) { toast('ملف غير صالح'); return; }
+      Object.entries(data.ls  || {}).forEach(([k, v]) => localStorage.setItem(k, v));
+      Object.entries(data.ss  || {}).forEach(([k, v]) => localStorage.setItem(k, v));   // توافق مع ملفات التصدير القديمة
+      toast('تم الاستيراد — جارٍ إعادة التحميل…');
+      setTimeout(() => window.location.reload(), 1400);
+    } catch { toast('خطأ في قراءة الملف'); }
+  };
+  reader.readAsText(file);
+}
+/* ── إعادة ضبط المصنع (خطوتان) ── */
+function factoryResetStep(btn) {
+  if (!btn.dataset.confirmed) {
+    btn.dataset.confirmed = '1';
+    btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> اضغط مرة أخرى للتأكيد';
+    btn.style.background = '#7f1d1d';
+    setTimeout(() => { delete btn.dataset.confirmed; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> إعادة تعيين'; btn.style.background = ''; }, 4000);
+    return;
+  }
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith('duo_')) keys.push(k); }
+  keys.forEach(k => localStorage.removeItem(k));
+  sessionStorage.clear();
+  toast('تم إعادة الضبط — جارٍ إعادة التحميل…');
+  setTimeout(() => window.location.reload(), 1400);
+}
+window.exportSettings    = exportSettings;
+window.importSettings    = importSettings;
+window.factoryResetStep  = factoryResetStep;
 
 /* ════════════════════════════════════════════════
    تبويب: ضبط الشاشة
@@ -408,7 +1159,7 @@ function renderScreenTab(body) {
             <i class="fa-solid fa-layer-group"></i>
           </div>
           <div class="layout-btn-body">
-            <span class="layout-btn-title">عمودي — <span class="layout-glass-label">Liquid Glass</span></span>
+            <span class="layout-btn-title">عمودي</span></span>
             <span class="layout-btn-sub">صورة المنتج الكبيرة + أسماء الأصناف بتمرير ديناميكي</span>
           </div>
           ${layout === 'vertical' ? '<i class="fa-solid fa-circle-check layout-btn-check"></i>' : ''}
@@ -517,48 +1268,73 @@ function _syncPush() {
     phoneHidden:    _phoneHidden,
     gamesHidden:    _gamesHidden,
     qrmenuHidden:   _qrmenuHidden,
+    langBtnHidden:  _langBtnHidden,
+    mealPriceHidden: _mealPriceHidden,
     badges:         _badges,
     tempHide:       _tempHide,
     scrollSkip:     [..._scrollSkip],
     catSkip:        [..._catSkip],
+    autoScroll:      _autoScroll,
+    itemDuration:    _itemDuration,
+    pauseDuration:   _pauseDuration,
+    overlayDuration: _overlayDuration,
+    crossfadeDur:    _crossfadeDur,
+    ovChangeDur:     _ovChangeDur,
+    ovCloseDur:      _ovCloseDur,
+    maintenanceOn:   _maintenanceOn,
+    maintenanceMsg:  _maintenanceMsg,
+    slideDurations:  _slideDurations,
+    pinnedSlide:     _pinnedSlide,
   });
 }
 
 function togglePhone(checked) {
   _phoneHidden = !checked;
-  sessionStorage.setItem(SS_PHONE, String(_phoneHidden));
+  localStorage.setItem(SS_PHONE, String(_phoneHidden));
   _syncPush();
   toast(checked ? 'تم إظهار رقم الهاتف' : 'تم إخفاء رقم الهاتف');
 }
 function toggleDiscount(checked) {
   _discountHidden = !checked;
-  sessionStorage.setItem(SS_DISCOUNT, String(_discountHidden));
+  localStorage.setItem(SS_DISCOUNT, String(_discountHidden));
   _syncPush();
   toast(checked ? 'تم إظهار زر الخصم' : 'تم إخفاء زر الخصم');
 }
 function toggleGames(checked) {
   _gamesHidden = !checked;
-  sessionStorage.setItem(SS_GAMES, String(_gamesHidden));
+  localStorage.setItem(SS_GAMES, String(_gamesHidden));
   _syncPush();
   toast(checked ? 'تم إظهار زر الألعاب' : 'تم إخفاء زر الألعاب');
 }
 function toggleQRMenu(checked) {
   _qrmenuHidden = !checked;
-  sessionStorage.setItem(SS_QRMENU, String(_qrmenuHidden));
+  localStorage.setItem(SS_QRMENU, String(_qrmenuHidden));
   _syncPush();
   toast(checked ? 'تم إظهار زر منيو الجوال' : 'تم إخفاء زر منيو الجوال');
+}
+function toggleLangBtn(checked) {
+  _langBtnHidden = !checked;
+  localStorage.setItem(SS_LANGBTN, String(_langBtnHidden));
+  _syncPush();
+  toast(checked ? 'تم إظهار زر ترجمة المنيو' : 'تم إخفاء زر ترجمة المنيو');
+}
+function toggleMealPrice(checked) {
+  _mealPriceHidden = !checked;
+  localStorage.setItem(SS_MEALPRICE, String(_mealPriceHidden));
+  _syncPush();
+  toast(checked ? 'تم إظهار سعر الوجبة' : 'تم إخفاء سعر الوجبة');
 }
 function toggleSlide(idx, checked) {
   if (checked) _hiddenSlides.delete(String(idx));
   else         _hiddenSlides.add(String(idx));
-  sessionStorage.setItem(SS_SLIDES, JSON.stringify([..._hiddenSlides]));
+  localStorage.setItem(SS_SLIDES, JSON.stringify([..._hiddenSlides]));
   _syncPush();
   renderSlidesTab($('dash-body'));
 }
 function toggleItem(key, checked) {
   if (checked) _hiddenItems.delete(key);
   else         _hiddenItems.add(key);
-  sessionStorage.setItem(SS_ITEMS, JSON.stringify([..._hiddenItems]));
+  localStorage.setItem(SS_ITEMS, JSON.stringify([..._hiddenItems]));
   _syncPush();
   // تحديث العداد
   const cat = menuCategories.find(c => c.items.some(it => _key(c.id, it.nameAr) === key));
@@ -571,7 +1347,7 @@ function toggleItem(key, checked) {
 function toggleVariant(vkey, checked) {
   if (checked) _hiddenVariants.delete(vkey);
   else         _hiddenVariants.add(vkey);
-  sessionStorage.setItem(SS_VARIANTS, JSON.stringify([..._hiddenVariants]));
+  localStorage.setItem(SS_VARIANTS, JSON.stringify([..._hiddenVariants]));
   _syncPush();
 }
 function setBadge(key, badge, btn) {
@@ -585,7 +1361,7 @@ function setBadge(key, badge, btn) {
 }
 /* ── إخفاء مؤقت ── */
 function setTempHide(key, hours) {
-  _tempHide[key] = Date.now() + hours * 3600000;
+  _tempHide[key] = _dashNow() + hours * 3600000;   // بساعة الخادم الموحّدة
   localStorage.setItem(LS_TEMP_HIDE, JSON.stringify(_tempHide));
   _syncPush();
   renderProductsTab($('dash-body'));
@@ -616,10 +1392,32 @@ function toggleCatSkip(catId, checked) {
   toast(checked ? `سيتخطى السكرول قسم "${cat?.nameAr}"` : `سيتوقف السكرول على قسم "${cat?.nameAr}"`);
 }
 
+/* ── دوال مدة الشرائح ── */
+function adjustSlideDur(idx, delta) {
+  const defDur = slides[idx]?.duration ?? 5000;
+  const cur    = (_slideDurations[String(idx)] !== undefined) ? _slideDurations[String(idx)] : defDur;
+  const next   = Math.max(1000, Math.min(30000, cur + delta));
+  _slideDurations[String(idx)] = next;
+  localStorage.setItem(LS_SLIDE_DURATIONS, JSON.stringify(_slideDurations));
+  _syncPush();
+  renderSlidesTab($('dash-body'));
+}
+function resetSlideDur(idx) {
+  delete _slideDurations[String(idx)];
+  localStorage.setItem(LS_SLIDE_DURATIONS, JSON.stringify(_slideDurations));
+  _syncPush();
+  renderSlidesTab($('dash-body'));
+  toast('تمت إعادة مدة الشريحة للافتراضي');
+}
+window.adjustSlideDur = adjustSlideDur;
+window.resetSlideDur  = resetSlideDur;
+
 window.togglePhone    = togglePhone;
 window.toggleDiscount = toggleDiscount;
 window.toggleGames    = toggleGames;
 window.toggleQRMenu   = toggleQRMenu;
+window.toggleLangBtn  = toggleLangBtn;
+window.toggleMealPrice = toggleMealPrice;
 window.toggleSlide    = toggleSlide;
 window.toggleItem     = toggleItem;
 window.toggleVariant  = toggleVariant;
@@ -662,8 +1460,15 @@ window.applyCustom    = applyCustom;
 /* ── تخطيط المنيو ── */
 function setLayout(mode) {
   localStorage.setItem(LS_LAYOUT, mode);
-  const label = mode === 'vertical' ? 'العرض العمودي (Liquid Glass)' : 'العرض الأفقي';
+  const label = mode === 'vertical' ? 'العرض العمودي' : 'العرض الأفقي';
   toast(`تم تفعيل ${label} ✓`);
+  // محاولة قفل الاتجاه مباشرةً (تعمل على Android، صامتة على iOS)
+  try {
+    const target = (mode === 'vertical') ? 'portrait' : 'landscape';
+    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      screen.orientation.lock(target).catch(() => {});
+    }
+  } catch (_) {}
   renderScreenTab($('dash-body'));
 }
 window.setLayout = setLayout;
@@ -931,6 +1736,120 @@ function pairReset() {
 }
 window.pairReset = pairReset;
 
+/* ════════════════════════════════════════════════
+   تبويب: منتجات جديدة (صورة فوق المنيو — خاصة بهذا الجهاز فقط)
+   يُفتح دائماً من لوحة التحكم *على نفس جهاز شاشة العميل* المطلوب
+   تفعيلها عليه — وليس عن بُعد لجهاز آخر.
+════════════════════════════════════════════════ */
+/* نفس معرّف الجهاز المستخدم في main.js (localStorage: duo_device_id)
+   حتى تُطابق عقدة الحضور نفسها في Firebase */
+function _dashDeviceId() {
+  let id = localStorage.getItem('duo_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('duo_device_id', id);
+  }
+  return id;
+}
+
+let _npVisible       = false;  // ظاهرة الآن على هذا الجهاز؟ — التحكم الأساسي هنا في لوحة التحكم
+let _npWatchStarted  = false;
+
+function renderNewProductsTab(body) {
+  const pairOn = localStorage.getItem('duo_pair_enabled') === 'true';
+
+  if (!pairOn) {
+    body.innerHTML = `
+      <div class="screen-note">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          <strong>فعّل ربط الأجهزة أولاً على هذا الجهاز</strong>
+          هذه الميزة تعمل عبر الاتصال المباشر (Firebase). اذهب لتبويب «ربط الأجهزة» وفعّل
+          الربط التلقائي على <b>هذا الجهاز تحديداً</b> (نفس الآيباد) قبل استخدام هذا التبويب.
+        </div>
+      </div>`;
+    return;
+  }
+
+  _startNpWatch();
+  body.innerHTML = _npCardHtml();
+}
+
+function _npCardHtml() {
+  return `
+    <div class="screen-note">
+      <i class="fa-solid fa-circle-info"></i>
+      <div>
+        <strong>صورة "منتجات جديدة" فوق المنيو</strong>
+        هذا هو <b>التحكم الأساسي</b> — يُظهر أو يُخفي الصورة فوراً على هذا الجهاز فقط (الآيباد الذي
+        تفتح منه لوحة التحكم الآن). شاشة الكاشير تملك نفس المفتاح كتحكم ثانوي سريع دون الحاجة للعودة هنا.
+        الصورة نفسها: <code>images/new-products/new.jpg</code>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-image"></i> هذا الجهاز</div>
+      <label class="row">
+        <div class="row-icon"><i class="fa-solid fa-tablet-screen-button"></i></div>
+        <div class="row-label">
+          إظهار صورة المنتجات الجديدة على هذا الجهاز
+          <small>${_npVisible ? 'ظاهرة الآن' : 'مخفية الآن'}</small>
+        </div>
+        <span class="toggle">
+          <input type="checkbox" ${_npVisible ? 'checked' : ''} onchange="npToggleHere(this.checked)">
+          <span class="slider"></span>
+        </span>
+      </label>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> إعادة الإظهار التلقائي</div>
+      <p class="pair-adv-note" style="margin-top:0">
+        عندما يضغط العميل على الصورة أو زر «عرض المنيو» تختفي الصورة ويظهر المنيو. حدّد هنا بعد كم
+        ثانية تعود الصورة للظهور تلقائياً على هذا الجهاز — اتركها <b>0</b> لتبقى مخفية حتى تُشغَّل يدوياً
+        من هنا أو من شاشة الكاشير.
+      </p>
+      <div class="screen-manual">
+        <div class="field">
+          <label>ثوانٍ قبل إعادة الظهور</label>
+          <input type="number" id="np-reshow-sec" min="0" max="3600" step="5"
+                 value="${_npReshowSec()}" onchange="npSetReshowSec(this.value)">
+        </div>
+      </div>
+    </div>`;
+}
+
+function _npReshowSec() {
+  const n = parseInt(localStorage.getItem('duo_np_reshow_delay') || '0', 10);
+  return (isNaN(n) || n < 0) ? 0 : n;
+}
+
+function npSetReshowSec(val) {
+  let n = parseInt(val, 10);
+  if (isNaN(n) || n < 0) n = 0;
+  if (n > 3600) n = 3600;
+  localStorage.setItem('duo_np_reshow_delay', String(n));
+  toast(n > 0 ? `سيُعاد إظهار الصورة تلقائياً بعد ${n} ثانية` : 'إعادة الإظهار التلقائي معطّلة');
+}
+window.npSetReshowSec = npSetReshowSec;
+
+function npToggleHere(checked) {
+  if (!window.DuoSync || typeof window.DuoSync.setDeviceFlag !== 'function') return;
+  _npVisible = checked;
+  window.DuoSync.setDeviceFlag(_dashDeviceId(), { newProductsVisible: checked });
+  toast(checked ? 'تم إظهار الصورة على هذا الجهاز' : 'تم إخفاء الصورة عن هذا الجهاز');
+  if (_activeTab === 'newproducts') $('dash-body').innerHTML = _npCardHtml();
+}
+window.npToggleHere = npToggleHere;
+
+function _startNpWatch() {
+  if (_npWatchStarted) return;
+  if (!window.DuoSync || typeof window.DuoSync.watchDevice !== 'function') return;
+  _npWatchStarted = true;
+  window.DuoSync.watchDevice(_dashDeviceId(), v => {
+    _npVisible = !!(v && v.newProductsVisible);
+    if (_activeTab === 'newproducts') $('dash-body').innerHTML = _npCardHtml();
+  });
+}
+
 /* تحديث حالة الاتصال (مرآة من صفحة المنيو عبر localStorage) */
 let _pairPollTimer = null;
 function _startPairingPoll() {
@@ -1034,6 +1953,240 @@ function pairTest(btn) {
 }
 window.pairTest = pairTest;
 
+/* ════════════════════════════════════════════════
+   صورة التلفاز للمنيو 9:16 — كل المنتجات في صورة واحدة بهوية المنيو
+   (الرسم في js/status-image.js)
+════════════════════════════════════════════════ */
+const LS_TVIMG_OPTS = 'duo_tvimg_opts';
+let _statusBlob = null;
+let _statusUrl  = null;
+let _statusSeq  = 0;      // آخر طلب توليد — يتجاهل النتائج القديمة عند التعديل السريع
+let _statusDebounce = null;
+
+function _tvImgDefaults() {
+  return {
+    phone: true, hours: true, address: true, social: true, qr: true,
+    hoursText:     restaurantInfo.workingHours || '',
+    daysText:      restaurantInfo.workingDays  || '',
+    phoneText:     restaurantInfo.phone        || '',
+    addressText:   restaurantInfo.address      || '',
+    instagramText: (restaurantInfo.instagram   || '').replace(/@/g, ''),
+    tiktokText:    (restaurantInfo.tiktok      || '').replace(/@/g, ''),
+  };
+}
+function _tvImgSaved() {
+  try { return JSON.parse(localStorage.getItem(LS_TVIMG_OPTS) || '{}') || {}; } catch (e) { return {}; }
+}
+function _tvImgOpts() {
+  return Object.assign(_tvImgDefaults(), _tvImgSaved());
+}
+/* يُخزَّن ما غيّره المستخدم فقط — القيم غير المعدّلة تتبع products.js دائماً */
+function _tvImgSave(patch) {
+  const saved = Object.assign(_tvImgSaved(), patch);
+  Object.keys(saved).forEach(k => { if (saved[k] === undefined) delete saved[k]; });
+  try { localStorage.setItem(LS_TVIMG_OPTS, JSON.stringify(saved)); } catch (e) {}
+}
+
+function _tvImgToggleRow(key, icon, label, hint, on) {
+  return `
+      <label class="row">
+        <div class="row-icon"><i class="${icon}"></i></div>
+        <div class="row-label">${label}<small>${hint}</small></div>
+        <span class="toggle">
+          <input type="checkbox" ${on ? 'checked' : ''} onchange="tvImgSet('${key}', this.checked)">
+          <span class="slider"></span>
+        </span>
+      </label>`;
+}
+
+function renderStatusImageTab(body) {
+  const o = _tvImgOpts();
+  const esc = v => String(v || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  body.innerHTML = `
+    <div class="screen-note">
+      <i class="fa-solid fa-circle-info"></i>
+      <div>
+        <strong>صورة التلفاز للمنيو بمقاس 9:16 <bdi dir="ltr">(1080×1920)</bdi></strong>
+        تُولَّد تلقائياً من منتجات المنيو وأسعارها الحالية بنفس ألوان وخطوط المنيو — للتلفاز العمودي
+        أو حالة الواتساب. المنتجات المخفية من تبويب «المنتجات» لا تظهر، وسعر الوجبة يتبع إعداد إخفائه.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-tv"></i> معاينة الصورة</div>
+      <div class="status-img-wrap">
+        <div class="status-img-preview" id="status-img-preview">
+          <div class="status-img-loading"><i class="fa-solid fa-spinner fa-spin"></i> جاري تجهيز الصورة…</div>
+        </div>
+        <div class="status-img-actions">
+          <button class="btn-apply" id="status-img-save" onclick="statusImageDownload()" disabled>
+            <i class="fa-solid fa-download"></i> تحميل الصورة
+          </button>
+          <button class="btn-auto status-img-share" id="status-img-share" onclick="statusImageShare()" disabled>
+            <i class="fa-solid fa-share-from-square"></i> مشاركة الصورة
+          </button>
+          <button class="btn-reset" onclick="statusImageGenerate()">
+            <i class="fa-solid fa-rotate"></i> تحديث
+          </button>
+          <p class="pair-adv-note">
+            «تحميل الصورة» يحفظها بصيغة PNG بدقة 1080×1920. على الآيباد يمكنك أيضاً الضغط مطوّلاً
+            على المعاينة واختيار «حفظ في الصور»، أو «مشاركة الصورة» لإرسالها لواتساب أو غيره.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-sliders"></i> عناصر أسفل الصورة</div>
+      ${_tvImgToggleRow('qr',      'fa-solid fa-qrcode',     'باركود منيو الجوال', 'يظهر أسفل يسار الصورة مع «امسح لمنيو الجوال»', o.qr)}
+      ${_tvImgToggleRow('phone',   'fa-solid fa-phone',      'رقم الهاتف',         'يُعدَّل من «معلومات التواصل» بالأسفل', o.phone)}
+      ${_tvImgToggleRow('hours',   'fa-solid fa-clock',      'أوقات العمل',        'النص المكتوب بالأسفل', o.hours)}
+      ${_tvImgToggleRow('address', 'fa-solid fa-location-dot','عنوان المطعم',      'يُعدَّل من «معلومات التواصل» بالأسفل', o.address)}
+      ${_tvImgToggleRow('social',  'fa-brands fa-instagram',  'حسابات التواصل',    'انستقرام وتيك توك', o.social)}
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-clock"></i> أوقات العمل في الصورة</div>
+      <div class="tvimg-fields">
+        <div class="field">
+          <label>الساعات</label>
+          <input type="text" class="tvimg-input" id="tvimg-hours" value="${esc(o.hoursText)}"
+                 placeholder="02:00 م – 03:00 ص" oninput="tvImgSetText('hoursText', this.value)">
+        </div>
+        <div class="field">
+          <label>الأيام</label>
+          <input type="text" class="tvimg-input" id="tvimg-days" value="${esc(o.daysText)}"
+                 placeholder="طوال أيام الأسبوع" oninput="tvImgSetText('daysText', this.value)">
+        </div>
+      </div>
+      <button class="btn-reset tvimg-reset" onclick="tvImgResetHours()">
+        <i class="fa-solid fa-rotate-left"></i> استرجاع الأوقات الافتراضية
+      </button>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-address-card"></i> معلومات التواصل في الصورة</div>
+      <div class="tvimg-fields">
+        <div class="field">
+          <label>رقم الهاتف</label>
+          <input type="text" class="tvimg-input tvimg-input--ltr" id="tvimg-phoneText" value="${esc(o.phoneText)}"
+                 inputmode="tel" placeholder="059 301 1999" oninput="tvImgSetText('phoneText', this.value)">
+        </div>
+        <div class="field">
+          <label>عنوان المطعم</label>
+          <input type="text" class="tvimg-input" id="tvimg-addressText" value="${esc(o.addressText)}"
+                 placeholder="مكه - حي الشوقية" oninput="tvImgSetText('addressText', this.value)">
+        </div>
+      </div>
+      <div class="tvimg-fields">
+        <div class="field">
+          <label>انستقرام</label>
+          <input type="text" class="tvimg-input tvimg-input--ltr" id="tvimg-instagramText" value="${esc(o.instagramText)}"
+                 placeholder="duo_burger1" oninput="tvImgSetText('instagramText', this.value)">
+        </div>
+        <div class="field">
+          <label>تيك توك</label>
+          <input type="text" class="tvimg-input tvimg-input--ltr" id="tvimg-tiktokText" value="${esc(o.tiktokText)}"
+                 placeholder="theduoburger" oninput="tvImgSetText('tiktokText', this.value)">
+        </div>
+      </div>
+      <button class="btn-reset tvimg-reset" onclick="tvImgResetContact()">
+        <i class="fa-solid fa-rotate-left"></i> استرجاع المعلومات الافتراضية
+      </button>
+    </div>`;
+  statusImageGenerate();
+}
+
+function tvImgSet(key, on) {
+  _tvImgSave({ [key]: !!on });
+  statusImageGenerate();
+}
+function tvImgSetText(key, val) {
+  _tvImgSave({ [key]: val });
+  clearTimeout(_statusDebounce);
+  _statusDebounce = setTimeout(statusImageGenerate, 400);
+}
+function tvImgResetHours() {
+  const d = _tvImgDefaults();
+  _tvImgSave({ hoursText: undefined, daysText: undefined });
+  const h = $('tvimg-hours'), dy = $('tvimg-days');
+  if (h) h.value = d.hoursText;
+  if (dy) dy.value = d.daysText;
+  statusImageGenerate();
+}
+function tvImgResetContact() {
+  const keys = ['phoneText', 'addressText', 'instagramText', 'tiktokText'];
+  _tvImgSave(Object.fromEntries(keys.map(k => [k, undefined])));
+  const d = _tvImgDefaults();
+  keys.forEach(k => { const el = $('tvimg-' + k); if (el) el.value = d[k]; });
+  statusImageGenerate();
+}
+window.tvImgResetContact = tvImgResetContact;
+window.tvImgSet = tvImgSet;
+window.tvImgSetText = tvImgSetText;
+window.tvImgResetHours = tvImgResetHours;
+
+function _statusIsHidden(catId, item, variant) {
+  const k = _key(catId, item.nameAr);
+  if (variant != null) return _hiddenVariants.has(k + '||' + variant);
+  if (_hiddenItems.has(k)) return true;
+  const exp = _tempHide[k];
+  return !!(exp && exp > Date.now());
+}
+
+async function statusImageGenerate() {
+  const prev = $('status-img-preview');
+  if (!prev || !window.DuoStatusImage) return;
+  const seq = ++_statusSeq;
+  ['status-img-share', 'status-img-save'].forEach(id => { const b = $(id); if (b) b.disabled = true; });
+  try {
+    const o = _tvImgOpts();
+    const canvas = await DuoStatusImage.render({
+      isHidden: _statusIsHidden,
+      mealPriceHidden: _mealPriceHidden,
+      footer: o,
+    });
+    const blob = await DuoStatusImage.toBlob(canvas);
+    if (!blob) throw new Error('toBlob');
+    if (seq !== _statusSeq) return;          // طلب أحدث قيد التنفيذ
+    _statusBlob = blob;
+    if (_statusUrl) URL.revokeObjectURL(_statusUrl);
+    _statusUrl = URL.createObjectURL(_statusBlob);
+    if (_activeTab !== 'statusimg') return;
+    prev.innerHTML = `<img src="${_statusUrl}" alt="صورة التلفاز للمنيو">`;
+    ['status-img-share', 'status-img-save'].forEach(id => { const b = $(id); if (b) b.disabled = false; });
+  } catch (e) {
+    if (seq !== _statusSeq) return;
+    console.warn('[status-image]', e);
+    prev.innerHTML = `<div class="status-img-loading">تعذّر تجهيز الصورة — اضغط «تحديث»</div>`;
+  }
+}
+
+function _statusFileName() {
+  return `duo-tv-menu-${new Date().toISOString().slice(0, 10)}.png`;
+}
+
+async function statusImageShare() {
+  if (!_statusBlob) return;
+  const file = new File([_statusBlob], _statusFileName(), { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); }
+    catch (e) { if (e && e.name !== 'AbortError') toast('تعذّرت المشاركة — استخدم «حفظ الصورة»'); }
+  } else {
+    statusImageDownload();
+  }
+}
+
+function statusImageDownload() {
+  if (!_statusUrl) return;
+  const a = document.createElement('a');
+  a.href = _statusUrl;
+  a.download = _statusFileName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('تم حفظ الصورة');
+}
+window.statusImageGenerate = statusImageGenerate;
+window.statusImageShare    = statusImageShare;
+window.statusImageDownload = statusImageDownload;
+
 /* ── توست ── */
 let _toastTimer = null;
 function toast(msg) {
@@ -1046,8 +2199,9 @@ function toast(msg) {
 }
 
 /* تطبيق الإعدادات المشتركة (القادمة من الجهاز الآخر) على لوحة التحكم */
-function _applyRemoteToDashboard(v) {
+function _applyRemoteToDashboard(v, opts) {
   if (!v || typeof v !== 'object') return;
+  const skipRender = !!(opts && opts.skipRender);
   try {
     _hiddenItems    = new Set(v.hiddenItems    || []);
     _hiddenSlides   = new Set((v.hiddenSlides  || []).map(String));
@@ -1056,22 +2210,51 @@ function _applyRemoteToDashboard(v) {
     _phoneHidden    = !!v.phoneHidden;
     _gamesHidden    = !!v.gamesHidden;
     _qrmenuHidden   = !!v.qrmenuHidden;
+    _langBtnHidden  = !!v.langBtnHidden;
+    _mealPriceHidden = !!v.mealPriceHidden;
     _badges         = v.badges || {};
     _tempHide       = v.tempHide   || {};
     _scrollSkip     = new Set(v.scrollSkip || []);
     _catSkip        = new Set(v.catSkip    || []);
-    sessionStorage.setItem(SS_ITEMS,    JSON.stringify([..._hiddenItems]));
-    sessionStorage.setItem(SS_SLIDES,   JSON.stringify([..._hiddenSlides]));
-    sessionStorage.setItem(SS_VARIANTS, JSON.stringify([..._hiddenVariants]));
-    sessionStorage.setItem(SS_DISCOUNT, String(_discountHidden));
-    sessionStorage.setItem(SS_PHONE,    String(_phoneHidden));
-    sessionStorage.setItem(SS_GAMES,    String(_gamesHidden));
-    sessionStorage.setItem(SS_QRMENU,  String(_qrmenuHidden));
-    localStorage.setItem(LS_BADGES,      JSON.stringify(_badges));
-    localStorage.setItem(LS_TEMP_HIDE,   JSON.stringify(_tempHide));
-    localStorage.setItem(LS_SCROLL_SKIP, JSON.stringify([..._scrollSkip]));
-    localStorage.setItem(LS_CAT_SKIP,    JSON.stringify([..._catSkip]));
-    showTab(_activeTab);   // أعد رسم التبويب الحالي بالقيم الجديدة
+    if (v.autoScroll      !== undefined) _autoScroll      = !!v.autoScroll;
+    if (v.itemDuration    !== undefined) _itemDuration    = parseInt(v.itemDuration,    10) || 3500;
+    if (v.pauseDuration   !== undefined) _pauseDuration   = parseInt(v.pauseDuration,   10) || 12000;
+    if (v.overlayDuration !== undefined) _overlayDuration = parseInt(v.overlayDuration, 10) || 8000;
+    localStorage.setItem(SS_ITEMS,    JSON.stringify([..._hiddenItems]));
+    localStorage.setItem(SS_SLIDES,   JSON.stringify([..._hiddenSlides]));
+    localStorage.setItem(SS_VARIANTS, JSON.stringify([..._hiddenVariants]));
+    localStorage.setItem(SS_DISCOUNT, String(_discountHidden));
+    localStorage.setItem(SS_PHONE,    String(_phoneHidden));
+    localStorage.setItem(SS_GAMES,    String(_gamesHidden));
+    localStorage.setItem(SS_QRMENU,  String(_qrmenuHidden));
+    localStorage.setItem(SS_LANGBTN, String(_langBtnHidden));
+    localStorage.setItem(SS_MEALPRICE, String(_mealPriceHidden));
+    localStorage.setItem(LS_BADGES,            JSON.stringify(_badges));
+    localStorage.setItem(LS_TEMP_HIDE,         JSON.stringify(_tempHide));
+    localStorage.setItem(LS_SCROLL_SKIP,       JSON.stringify([..._scrollSkip]));
+    localStorage.setItem(LS_CAT_SKIP,          JSON.stringify([..._catSkip]));
+    localStorage.setItem(LS_AUTO_SCROLL,          String(_autoScroll));
+    localStorage.setItem(LS_ITEM_DURATION_KEY,    String(_itemDuration));
+    localStorage.setItem(LS_PAUSE_DURATION_KEY,   String(_pauseDuration));
+    localStorage.setItem(LS_OVERLAY_DURATION_KEY, String(_overlayDuration));
+    if (v.crossfadeDur    !== undefined) { _crossfadeDur    = parseInt(v.crossfadeDur,    10) || 520;  localStorage.setItem(LS_CROSSFADE_DUR,    String(_crossfadeDur)); }
+    if (v.ovChangeDur     !== undefined) { _ovChangeDur     = parseInt(v.ovChangeDur,     10) || 260;  localStorage.setItem(LS_OV_CHANGE_DUR,    String(_ovChangeDur)); }
+    if (v.ovCloseDur      !== undefined) { _ovCloseDur      = parseInt(v.ovCloseDur,      10) || 430;  localStorage.setItem(LS_OV_CLOSE_DUR,     String(_ovCloseDur)); }
+    if (v.maintenanceOn   !== undefined) { _maintenanceOn   = !!v.maintenanceOn;                       localStorage.setItem(LS_MAINTENANCE,       String(_maintenanceOn)); }
+    if (v.maintenanceMsg  !== undefined) { _maintenanceMsg  = String(v.maintenanceMsg);                localStorage.setItem(LS_MAINTENANCE_MSG,   _maintenanceMsg); }
+    if (v.slideDurations  !== undefined) { _slideDurations  = v.slideDurations || {};                  localStorage.setItem(LS_SLIDE_DURATIONS,   JSON.stringify(_slideDurations)); }
+    if (v.pinnedSlide     !== undefined) {
+      _pinnedSlide = (v.pinnedSlide !== null && v.pinnedSlide !== undefined) ? parseInt(v.pinnedSlide, 10) : null;
+      if (_pinnedSlide !== null) localStorage.setItem(LS_PINNED_SLIDE, String(_pinnedSlide));
+      else localStorage.removeItem(LS_PINNED_SLIDE);
+    }
+    if (!skipRender) {
+      // أعد رسم التبويب الحالي بالقيم الجديدة مع الحفاظ على موضع السكرول
+      const body = $('dash-body');
+      const st = body ? body.scrollTop : 0;
+      showTab(_activeTab);
+      if (body) body.scrollTop = st;
+    }
   } catch (e) {}
 }
 
@@ -1084,8 +2267,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (rn && typeof restaurantInfo !== 'undefined') rn.textContent = restaurantInfo.nameEn || restaurantInfo.nameAr || 'DUO';
   showTab('header');
 
-  // اجلب الإعدادات المشتركة من الجهاز الآخر (إن كان الربط مفعّلاً)
-  if (window.DuoSync && typeof window.DuoSync.readOnce === 'function') {
-    window.DuoSync.readOnce(v => { if (v) _applyRemoteToDashboard(v); });
+  // تفعيل القفل التلقائي إن كان مضبوطاً
+  _setupAutoLock();
+
+  // استمع باستمرار للإعدادات المشتركة (وليس قراءة واحدة فقط): إن غيّر الكاشير
+  // أو جهاز آخر شيئاً ولوحة التحكم مفتوحة، تبقى قيمها محدّثة — وإلا كانت
+  // تكتب لاحقاً حالة قديمة فوق التغيير وتُعيد المنتجات المخفية للظهور.
+  if (window.DuoSync && typeof window.DuoSync.listen === 'function') {
+    window.DuoSync.listen(v => {
+      // لا تُعِد رسم التبويب والمستخدم يكتب في حقل نصي (يضيع ما يكتبه)
+      const ae = document.activeElement;
+      const typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== 'checkbox' && ae.type !== 'range';
+      _applyRemoteToDashboard(v, { skipRender: typing });
+    });
   }
 });
