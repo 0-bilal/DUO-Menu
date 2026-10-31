@@ -246,8 +246,7 @@
         ${row('fa-solid fa-phone', 'اتصل بنا', info.phone, telHref, 'is-phone')}
         ${row('fa-brands fa-whatsapp', 'واتساب', waNum ? 'راسلنا على واتساب' : '', waNum ? 'https://wa.me/' + waNum : '', 'is-wa')}
         ${row('fa-solid fa-circle-info', 'ملاحظة', info.notes)}
-      </div>
-      <a class="m-info-switch" href="./"><i class="fa-solid fa-repeat"></i>عرض منيو فرع آخر</a>`;
+      </div>`;
     main.appendChild(sec);
   }
 

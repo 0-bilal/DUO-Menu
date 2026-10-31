@@ -700,13 +700,6 @@ a.m-info-row:active { background: rgba(255,255,255,.05); }
 .m-info-value { font-size: 14px; font-weight: 700; line-height: 1.45; }
 .m-info-row.is-phone .m-info-value { font-family: var(--en); direction: ltr; text-align: right; }
 .m-info-go { color: var(--gray-lt); font-size: 12px; }
-.m-info-switch {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-  margin: 14px 16px 0; padding: 11px; border-radius: 14px;
-  font-size: 13px; font-weight: 600; color: var(--gray); text-decoration: none;
-  border: 1px dashed var(--border-hi);
-}
-.m-info-switch i { color: var(--red-lt); font-size: 12px; }
 
 /* ════════════════════════════════════════════
    الفروع — صفحة اختيار الفرع
