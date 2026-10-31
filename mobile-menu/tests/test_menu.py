@@ -196,7 +196,8 @@ class MenuTests(unittest.TestCase):
                 # WhatsApp reads these tags from the raw HTML without running scripts.
                 self.assertIn(f'<meta property="og:title"       content="منيو ديو برجر | {name}">',html)
                 self.assertIn(f'og:url"         content="https://0-bilal.github.io/DUO-Menu/mobile-menu/{branch}/"',html)
-                self.assertIn('og:image"       content="https://0-bilal.github.io/DUO-Menu/mobile-menu/images/products/duo-burger.jpg"',html)
+                self.assertIn('og:image"       content="https://0-bilal.github.io/DUO-Menu/mobile-menu/images/share-logo.jpg"',html)
+                self.assertTrue((Path(__file__).resolve().parents[1]/'images'/'share-logo.jpg').is_file())
                 page=self.page(query=f'{branch}/')
                 page.wait_for_function(f"document.querySelectorAll('.m-card').length==={cards}")
                 self.assertTrue(page.url.endswith(f'/?branch={branch}'))
