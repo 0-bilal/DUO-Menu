@@ -32,13 +32,17 @@ class MenuTests(unittest.TestCase):
         cls.server.server_close()
         cls.thread.join()
 
-    def page(self, width=390, height=844, reduced_motion='no-preference'):
+    def page(self, width=390, height=844, reduced_motion='no-preference', query='?branch=makkah',
+             blocked=()):
         page = self.browser.new_page(viewport={'width': width, 'height': height},
                                      has_touch=True, reduced_motion=reduced_motion)
         self.addCleanup(page.close)
         # The external styles are optional; verify controls work even without them.
         page.route('https://**/*', lambda route: route.abort())
-        page.goto(self.url)
+        for pattern in blocked:
+            page.route(pattern, lambda route: route.abort())
+        page.goto(self.url + query)
+        page.wait_for_function("document.querySelector('.m-card, .m-picker')")
         return page
 
     def closed(self, page):
@@ -127,7 +131,7 @@ class MenuTests(unittest.TestCase):
         page.locator('.m-card').first.click()
         page.evaluate("()=>{const b=document.querySelector('#m-modal-close');b.click();b.click();b.click();}")
         self.closed(page)
-        self.assertEqual(page.url,self.url)
+        self.assertEqual(page.url,self.url+'?branch=makkah')
 
     def test_desktop_category_at_page_bottom(self):
         page=self.page(1280,900)
@@ -136,14 +140,51 @@ class MenuTests(unittest.TestCase):
         self.assertEqual(page.locator('.m-tab.active').get_attribute('data-cat'),'drinks')
 
     def test_reduced_motion_and_missing_image(self):
-        page=self.page(reduced_motion='reduce')
-        page.route('**/images/products/duo-burger.jpg',lambda route:route.abort())
+        page=self.page(reduced_motion='reduce',blocked=['**/images/products/duo-burger.jpg'])
         page.locator('.m-card').first.click()
         page.locator('.m-modal-img-ph').wait_for()
         self.assertEqual(page.locator('.m-modal-img-ph').inner_text(),'الصورة غير متاحة')
         self.assertEqual(page.locator('#m-modal').evaluate('e=>getComputedStyle(e).transitionDuration'),'0s')
         page.keyboard.press('Escape')
         self.closed(page)
+
+    def test_each_branch_link_loads_its_own_menu_and_info(self):
+        makkah=self.page()
+        self.assertIn('فرع مكة',makkah.locator('#m-tag').inner_text())
+        self.assertEqual(makkah.locator('.m-card').count(),15)
+        self.assertEqual(makkah.locator('.m-info-row.is-phone').get_attribute('href'),'tel:0593011999')
+        self.assertTrue(makkah.locator('.m-info-row.is-map').get_attribute('href').startswith('https://maps.app.goo.gl/'))
+        jeddah=self.page(query='?branch=jeddah')
+        self.assertIn('فرع جدة',jeddah.locator('#m-tag').inner_text())
+        self.assertIn('فرع جدة',jeddah.title())
+        self.assertEqual(jeddah.locator('.m-card').count(),16)
+        truffle=jeddah.locator('.m-card',has_text='دبل ترافل برجر')
+        self.assertEqual(truffle.locator('.m-price-num').inner_text(),'28')
+        # Info rows with no data are hidden rather than showing placeholders.
+        self.assertEqual(jeddah.locator('.m-info-row.is-phone').count(),0)
+        self.assertFalse(jeddah.locator('#m-map-btn').is_visible())
+        # Numeric ids from the main system and Arabic names also work.
+        self.assertIn('فرع جدة',self.page(query='?branch=2').locator('#m-tag').inner_text())
+        self.assertIn('فرع مكة',self.page(query='?branch=%D9%85%D9%83%D8%A9').locator('#m-tag').inner_text())
+
+    def test_picker_shown_without_or_with_unknown_branch(self):
+        for query in ['', '?branch=riyadh']:
+            with self.subTest(query=query):
+                page=self.page(query=query)
+                self.assertEqual(page.locator('.m-card').count(),0)
+                self.assertFalse(page.locator('.m-tabs-wrap').is_visible())
+                cards=page.locator('.m-picker-card')
+                self.assertEqual(cards.count(),2)
+                cards.filter(has_text='فرع جدة').click()
+                page.wait_for_function("document.querySelectorAll('.m-card').length===16")
+                self.assertTrue(page.url.endswith('?branch=jeddah'))
+
+    def test_info_tab_scrolls_to_branch_info(self):
+        page=self.page()
+        page.locator('[data-cat=info]').click()
+        page.wait_for_timeout(1200)
+        self.assertTrue(page.locator('#sec-info').is_visible())
+        self.assertEqual(page.locator('.m-tab.active').get_attribute('data-cat'),'info')
 
 
 if __name__ == '__main__':

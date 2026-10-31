@@ -660,6 +660,92 @@ body {
 }
 
 /* ════════════════════════════════════════════
+   الفروع — شارة الفرع في الهيدر
+════════════════════════════════════════════ */
+.m-branch-chip {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  font-size: 11px; font-weight: 700; color: var(--white);
+  text-decoration: none; -webkit-tap-highlight-color: transparent;
+}
+.m-branch-chip i { color: var(--red-lt); font-size: 10px; }
+.m-branch-change {
+  font-size: 10px; font-weight: 600; color: var(--red-lt);
+  padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--red-edge); background: var(--red-soft);
+}
+
+/* ════════════════════════════════════════════
+   الفروع — بطاقة معلومات الفرع
+════════════════════════════════════════════ */
+.m-info-card {
+  margin: 0 16px; border-radius: var(--r-card); overflow: hidden;
+  background: var(--card-bg); border: 1px solid var(--border);
+}
+.m-info-row {
+  display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+  color: var(--white); text-decoration: none; -webkit-tap-highlight-color: transparent;
+}
+.m-info-row + .m-info-row { border-top: 1px solid rgba(255,255,255,.06); }
+a.m-info-row:active { background: rgba(255,255,255,.05); }
+.m-info-ico {
+  width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--red-soft); border: 1px solid var(--red-edge);
+}
+.m-info-ico i { color: var(--red-lt); font-size: 15px; }
+.m-info-row.is-wa .m-info-ico { background: rgba(37,211,102,.12); border-color: rgba(37,211,102,.35); }
+.m-info-row.is-wa .m-info-ico i { color: #25d366; }
+.m-info-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.m-info-label { font-size: 11px; color: var(--gray); }
+.m-info-value { font-size: 14px; font-weight: 700; line-height: 1.45; }
+.m-info-row.is-phone .m-info-value { font-family: var(--en); direction: ltr; text-align: right; }
+.m-info-go { color: var(--gray-lt); font-size: 12px; }
+.m-info-switch {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  margin: 14px 16px 0; padding: 11px; border-radius: 14px;
+  font-size: 13px; font-weight: 600; color: var(--gray); text-decoration: none;
+  border: 1px dashed var(--border-hi);
+}
+.m-info-switch i { color: var(--red-lt); font-size: 12px; }
+
+/* ════════════════════════════════════════════
+   الفروع — صفحة اختيار الفرع
+════════════════════════════════════════════ */
+body.m-picking .m-tabs-wrap,
+body.m-picking .m-header-hours,
+body.m-picking .m-footer-tax,
+body.m-picking .m-footer-links { display: none; }
+body.m-picking .m-main { padding-top: calc(var(--header-h) + 28px); }
+
+.m-picker { padding: 0 18px; max-width: 520px; margin: 0 auto; }
+.m-picker-title { font-size: 24px; font-weight: 900; color: var(--white); margin: 0; }
+.m-picker-sub { font-size: 13px; color: var(--gray); margin: 6px 0 20px; line-height: 1.6; }
+.m-picker-error {
+  font-size: 13px; color: #fff; margin: 0 0 16px; padding: 10px 12px; border-radius: 12px;
+  background: var(--red-soft); border: 1px solid var(--red-edge);
+}
+.m-picker-list { display: flex; flex-direction: column; gap: 12px; }
+.m-picker-card {
+  display: flex; align-items: center; gap: 14px; padding: 18px 16px;
+  border-radius: var(--r-card); text-decoration: none; color: var(--white);
+  background: var(--card-bg); border: 1px solid var(--border-hi);
+  transition: background .2s ease, border-color .2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-picker-card:active, .m-picker-card:hover { background: var(--red-soft); border-color: var(--red-edge); }
+.m-picker-ico {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, var(--red), var(--red-dk));
+  box-shadow: 0 0 16px var(--red-glow);
+}
+.m-picker-ico i { font-size: 20px; color: #fff; }
+.m-picker-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.m-picker-name { font-size: 18px; font-weight: 800; }
+.m-picker-name-en { font-family: var(--en); font-size: 12px; color: var(--gray); }
+.m-picker-arrow { color: var(--gray); font-size: 14px; }
+
+/* ════════════════════════════════════════════
    متجاوب — شاشات صغيرة جداً (< 360px)
 ════════════════════════════════════════════ */
 @media (max-width: 359px) {

@@ -1,6 +1,8 @@
 /**
  * menu.js — منيو ديو برجر للجوال
- * يعتمد على restaurantInfo و menuCategories من products.js
+ * يحدد الفرع من الرابط (?branch=makkah | jeddah — انظر branches.js)،
+ * ثم يحمّل ملف منتجات الفرع (restaurantInfo و menuCategories) ويبني الصفحة.
+ * بدون فرع صحيح تظهر صفحة اختيار الفرع.
  */
 
 (function () {
@@ -45,19 +47,68 @@
   /* ══════════════════════════════════════════
      بناء الصفحة
   ══════════════════════════════════════════ */
-  function buildPage() {
-    const info = restaurantInfo || {};
-    const cats = menuCategories  || [];
-    _buildHeader(info);
+  const INFO_TAB = { id: 'info', nameAr: 'الفرع', icon: 'fa-location-dot' };
+
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function buildPage(branchId, branch) {
+    const info = (typeof restaurantInfo !== 'undefined' && restaurantInfo) || {};
+    const cats = (typeof menuCategories  !== 'undefined' && menuCategories)  || [];
+    document.documentElement.dataset.branch = branchId;
+    _buildHeader(info, branch);
     _buildTabs(cats);
     _buildContent(cats);
+    _buildBranchInfo(info, branch);
+    _setupScrollSpy(cats.concat(INFO_TAB));
     _buildFooter(info);
     _setupScrollTop();
     _setupModalClose();
   }
 
+  /* ══════════════════════════════════════════
+     اختيار الفرع وتحميل ملف منتجاته
+  ══════════════════════════════════════════ */
+  function boot() {
+    const branches = window.DUO_BRANCHES || {};
+    const id = window.DUO_resolveBranch ? window.DUO_resolveBranch(location.search) : null;
+    if (!id) { _showBranchPicker(branches); return; }
+    const branch = branches[id];
+    const script = document.createElement('script');
+    script.src = branch.products;
+    script.onload  = () => buildPage(id, branch);
+    script.onerror = () => _showBranchPicker(branches, 'تعذّر تحميل منيو ' + branch.nameAr + '، حاول مرة أخرى.');
+    document.head.appendChild(script);
+  }
+
+  function _showBranchPicker(branches, error) {
+    document.body.classList.add('m-picking');
+    _buildHeader({ nameAr: 'ديو برجر', logo: 'images/logo.ico' });
+    document.title = 'ديو برجر | اختر الفرع';
+    const main = document.getElementById('m-main');
+    if (!main) return;
+    const ids = Object.keys(branches);
+    main.innerHTML = `
+      <section class="m-picker" aria-labelledby="m-picker-title">
+        <h1 class="m-picker-title" id="m-picker-title">اختر الفرع</h1>
+        <p class="m-picker-sub">المنتجات والأسعار ومعلومات التواصل تختلف حسب الفرع</p>
+        ${error ? `<p class="m-picker-error" role="alert">${esc(error)}</p>` : ''}
+        <div class="m-picker-list">
+          ${ids.map(id => `
+            <a class="m-picker-card" href="?branch=${encodeURIComponent(id)}" data-branch="${esc(id)}">
+              <span class="m-picker-ico"><i class="fa-solid fa-location-dot"></i></span>
+              <span class="m-picker-text">
+                <span class="m-picker-name">${esc(branches[id].nameAr)}</span>
+                ${branches[id].nameEn ? `<span class="m-picker-name-en">${esc(branches[id].nameEn)}</span>` : ''}
+              </span>
+              <i class="fa-solid fa-chevron-left m-picker-arrow" aria-hidden="true"></i>
+            </a>`).join('')}
+        </div>
+      </section>`;
+  }
+
   /* ── الهيدر ── */
-  function _buildHeader(info) {
+  function _buildHeader(info, branch) {
     const logoImg  = document.getElementById('m-logo-img');
     const logoPh   = document.getElementById('m-logo-ph');
     const nameEl   = document.getElementById('m-name');
@@ -75,14 +126,20 @@
     }
 
     if (nameEl) nameEl.textContent = info.nameAr || '';
-    if (tagEl)  tagEl.textContent  = info.taglineAr || '';
+    if (tagEl) {
+      if (branch) {
+        tagEl.innerHTML = `<a class="m-branch-chip" href="./" aria-label="${esc(branch.nameAr)} — تغيير الفرع">
+          <i class="fa-solid fa-location-dot"></i><span>${esc(branch.nameAr)}</span>
+          <span class="m-branch-change">تغيير</span></a>`;
+      } else tagEl.textContent = info.taglineAr || '';
+    }
     /* أوقات العمل — السطر الأول: الساعات · السطر الثاني: الأيام */
     if (hoursEl) {
       hoursEl.textContent = info.workingHours || '';
     }
     const daysEl = document.getElementById('m-hours-days');
     if (daysEl) daysEl.textContent = info.workingDays || '';
-    document.title = (info.nameAr || 'منيو') + ' | المنيو';
+    document.title = (info.nameAr || 'منيو') + (branch ? ' — ' + branch.nameAr : '') + ' | المنيو';
   }
 
   /* ── تبويبات الأقسام ── */
@@ -90,7 +147,7 @@
     const bar = document.getElementById('m-tabs');
     if (!bar) return;
     bar.innerHTML = '';
-    cats.forEach((cat, i) => {
+    cats.concat(INFO_TAB).forEach((cat, i) => {
       const btn = document.createElement('button');
       btn.className   = 'm-tab' + (i === 0 ? ' active' : '');
       btn.dataset.cat = cat.id;
@@ -150,7 +207,48 @@
 
       main.appendChild(sec);
     });
-    _setupScrollSpy(cats);
+  }
+
+  /* ── بطاقة معلومات الفرع: العنوان، الدوام، الهاتف، الخريطة ── */
+  function _buildBranchInfo(info, branch) {
+    const main = document.getElementById('m-main');
+    if (!main) return;
+    const telHref = info.phone ? 'tel:' + String(info.phone).replace(/[^\d+]/g, '') : '';
+    const waNum   = String(info.whatsapp || '').replace(/\D/g, '');
+    const row = (icon, label, value, href, cls) => value ? `
+      <${href ? `a href="${esc(href)}"${/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ''}` : 'div'} class="m-info-row${cls ? ' ' + cls : ''}">
+        <span class="m-info-ico"><i class="${icon}"></i></span>
+        <span class="m-info-text">
+          <span class="m-info-label">${esc(label)}</span>
+          <span class="m-info-value">${esc(value)}</span>
+        </span>
+        ${href ? '<i class="fa-solid fa-chevron-left m-info-go" aria-hidden="true"></i>' : ''}
+      </${href ? 'a' : 'div'}>` : '';
+
+    const sep = document.createElement('div');
+    sep.className = 'm-separator';
+    main.appendChild(sep);
+    const sec = document.createElement('section');
+    sec.className = 'm-section m-info';
+    sec.id = 'sec-' + INFO_TAB.id;
+    sec.innerHTML = `
+      <div class="m-section-header">
+        <div class="m-section-icon"><i class="fa-solid ${INFO_TAB.icon}"></i></div>
+        <div class="m-section-titles">
+          <div class="m-section-name">معلومات ${esc(branch ? branch.nameAr : 'الفرع')}</div>
+          <div class="m-section-name-en">Branch Info</div>
+        </div>
+      </div>
+      <div class="m-info-card">
+        ${row('fa-solid fa-map-location-dot', 'العنوان', info.address, info.googleMapsUrl, 'is-map')}
+        ${row('fa-solid fa-clock', 'أوقات الدوام', info.workingHours)}
+        ${row('fa-solid fa-calendar-days', 'أيام العمل', info.workingDays)}
+        ${row('fa-solid fa-phone', 'اتصل بنا', info.phone, telHref, 'is-phone')}
+        ${row('fa-brands fa-whatsapp', 'واتساب', waNum ? 'راسلنا على واتساب' : '', waNum ? 'https://wa.me/' + waNum : '', 'is-wa')}
+        ${row('fa-solid fa-circle-info', 'ملاحظة', info.notes)}
+      </div>
+      <a class="m-info-switch" href="./"><i class="fa-solid fa-repeat"></i>عرض منيو فرع آخر</a>`;
+    main.appendChild(sec);
   }
 
   /* ── بطاقة منتج ── */
@@ -445,6 +543,7 @@
           // Keep the clicked section selected at the scroll limit, until the next user gesture.
           return;
         }
+        if (!cats.length) return;
         let activeCat = cats[0].id;
         cats.forEach(cat => {
           const sec = document.getElementById('sec-' + cat.id);
@@ -495,7 +594,7 @@
   /* ══════════════════════════════════════════
      البدء
   ══════════════════════════════════════════ */
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildPage);
-  else buildPage();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 
 })();
