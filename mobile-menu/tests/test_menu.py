@@ -151,6 +151,8 @@ class MenuTests(unittest.TestCase):
     def test_each_branch_link_loads_its_own_menu_and_info(self):
         makkah=self.page()
         self.assertIn('فرع مكة',makkah.locator('#m-tag').inner_text())
+        self.assertNotIn('تغيير',makkah.locator('.m-header').inner_text())
+        self.assertEqual(makkah.locator('.m-header a').count(),0)
         self.assertEqual(makkah.locator('.m-card').count(),15)
         self.assertEqual(makkah.locator('.m-info-row.is-phone').get_attribute('href'),'tel:0593011999')
         self.assertTrue(makkah.locator('.m-info-row.is-map').get_attribute('href').startswith('https://maps.app.goo.gl/'))

@@ -128,9 +128,8 @@
     if (nameEl) nameEl.textContent = info.nameAr || '';
     if (tagEl) {
       if (branch) {
-        tagEl.innerHTML = `<a class="m-branch-chip" href="./" aria-label="${esc(branch.nameAr)} — تغيير الفرع">
-          <i class="fa-solid fa-location-dot"></i><span>${esc(branch.nameAr)}</span>
-          <span class="m-branch-change">تغيير</span></a>`;
+        tagEl.innerHTML = `<span class="m-branch-chip">
+          <i class="fa-solid fa-location-dot"></i><span>${esc(branch.nameAr)}</span></span>`;
       } else tagEl.textContent = info.taglineAr || '';
     }
     /* أوقات العمل — السطر الأول: الساعات · السطر الثاني: الأيام */
