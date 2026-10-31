@@ -189,6 +189,19 @@ class MenuTests(unittest.TestCase):
         self.assertEqual(page.locator('.m-tab.active').get_attribute('data-cat'),'info')
         self.assertEqual(page.locator('#sec-info a[href="./"]').count(),0)
 
+    def test_share_links_have_branch_preview_and_open_branch_menu(self):
+        for branch, name, cards in [('makkah','فرع مكة',15), ('jeddah','فرع جدة',16)]:
+            with self.subTest(branch=branch):
+                html=(Path(__file__).resolve().parents[1]/branch/'index.html').read_text(encoding='utf-8')
+                # WhatsApp reads these tags from the raw HTML without running scripts.
+                self.assertIn(f'<meta property="og:title"       content="منيو ديو برجر | {name}">',html)
+                self.assertIn(f'og:url"         content="https://0-bilal.github.io/DUO-Menu/mobile-menu/{branch}/"',html)
+                self.assertIn('og:image"       content="https://0-bilal.github.io/DUO-Menu/mobile-menu/images/products/duo-burger.jpg"',html)
+                page=self.page(query=f'{branch}/')
+                page.wait_for_function(f"document.querySelectorAll('.m-card').length==={cards}")
+                self.assertTrue(page.url.endswith(f'/?branch={branch}'))
+                self.assertIn(name,page.locator('#m-tag').inner_text())
+
 
 if __name__ == '__main__':
     unittest.main()

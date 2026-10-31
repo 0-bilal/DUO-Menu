@@ -2,10 +2,24 @@
 
 ## روابط الفروع
 
-| الفرع | الرابط | ملف المنتجات والمعلومات |
+**روابط المشاركة (واتساب / الباركود)** — تظهر معها معاينة باسم الفرع ووصفه وصورة:
+
+| الفرع | رابط المشاركة | ملف المنتجات والمعلومات |
 | --- | --- | --- |
-| فرع مكة | `mobile-menu/?branch=makkah` | `js/products-makkah.js` |
-| فرع جدة | `mobile-menu/?branch=jeddah` | `js/products-jeddah.js` |
+| فرع مكة | `https://0-bilal.github.io/DUO-Menu/mobile-menu/makkah/` | `js/products-makkah.js` |
+| فرع جدة | `https://0-bilal.github.io/DUO-Menu/mobile-menu/jeddah/` | `js/products-jeddah.js` |
+
+رابط المشاركة ينقل الزائر مباشرة إلى `mobile-menu/?branch=makkah` أو `?branch=jeddah`.
+
+### معاينة الرابط في واتساب
+
+واتساب لا يشغّل JavaScript؛ يقرأ وسوم `og:` من ملف HTML فقط. لذلك لكل فرع صفحة صغيرة
+(`makkah/index.html` و `jeddah/index.html`) فيها عنوان ووصف وصورة المعاينة الخاصة به.
+- لتغيير نص رسالة واتساب: عدّل `title` و `og:title` و `og:description` في صفحة الفرع.
+- إذا غيّرت العنوان أو أوقات الدوام في ملف المنتجات، حدّث الوصف هنا أيضاً.
+- الصورة: `og:image` (رابط كامل، ويفضل أقل من 300KB).
+- واتساب يحفظ المعاينة مؤقتاً؛ قد يظهر التعديل لرابط سبق إرساله بعد فترة.
+- إذا تغيّر نطاق الموقع، غيّر الروابط الكاملة في `og:url` و `og:image`.
 
 - الرابط بدون `?branch` يعرض صفحة **اختيار الفرع**.
 - تعمل أيضاً `?branch=1` (مكة) و `?branch=2` (جدة)، وهي نفس أرقام الفروع في النظام الرئيسي (`js/branch.js`).
@@ -26,7 +40,8 @@
 ## إضافة فرع جديد
 
 1. انسخ `js/products-makkah.js` باسم جديد، مثل `js/products-riyadh.js`، وعدّل بياناته.
-2. أضف الفرع في `js/branches.js`:
+2. انسخ مجلد `makkah/` باسم `riyadh/`، وغيّر فيه اسم الفرع والوصف و `makkah` إلى `riyadh`.
+3. أضف الفرع في `js/branches.js`:
 
 ```js
 riyadh: {
