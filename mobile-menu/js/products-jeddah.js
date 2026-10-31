@@ -1,7 +1,12 @@
 /**
- * products.js — بيانات منيو ديو برجر (نسخة الجوال)
+ * products-jeddah.js — منيو ومعلومات «فرع جدة» (نسخة الجوال)
  * ═══════════════════════════════════════════════════
- * عدّل هذا الملف لتحديث معلومات المطعم والمنتجات
+ * رابط الفرع:  mobile-menu/?branch=jeddah
+ * عدّل هذا الملف لتحديث معلومات الفرع ومنتجاته وأسعاره.
+ * (فرع مكة له ملفه الخاص: js/products-makkah.js)
+ *
+ * ⚠ الأسعار مأخوذة من ملف الفرع الثاني في النظام الرئيسي (js/products-branch2.js).
+ *   راجع العنوان ورقم الهاتف ورابط الخريطة أدناه وضع بيانات فرع جدة الحقيقية.
  */
 
 const restaurantInfo = {
@@ -9,7 +14,9 @@ const restaurantInfo = {
   nameEn:       'DUO Burger',
   taglineAr:    'نكهة لا تُنسى في كل قضمة',
   logo:         'images/logo.ico',
-  phone:        '..قريبا',
+  /* ─── معلومات الفرع (تظهر في بطاقة «معلومات الفرع» أسفل المنيو) ─── */
+  phone:        '',               // ← ضع رقم فرع جدة (فارغ '' = لا يظهر)
+  whatsapp:     '',               // ← رقم واتساب دولي بدون + أو أصفار، مثال: '966593011999' (فارغ = لا يظهر)
   workingHours: 'م02:00 - ص03:00',
   workingDays:  'طوال أيام الأسبوع',
 
@@ -24,13 +31,14 @@ const restaurantInfo = {
   instagram:    'duo_burger1',       // ← اسم حساب الإنستقرام (بدون @)
   tiktok:       'theduoburger',     // ← اسم حساب التيك توك  (بدون @)
 
-  address:      'مكة - حي الشوقية',
+  address:      'جدة',            // ← ضع الحي، مثال: 'جدة - حي الروضة'
+  notes:        '',               // ← ملاحظة إضافية اختيارية، مثال: 'يوجد مواقف سيارات'
   taxNote:      'الأسعار شاملة ضريبة القيمة المضافة 15%',
 
   /* ─────────────────────────────────────────────────────────
      رابط الخريطة — انسخ الرابط الكامل من Google Maps
   ───────────────────────────────────────────────────────── */
-  googleMapsUrl: 'https://maps.app.goo.gl/vh6dvfB1u4w6f99s9',
+  googleMapsUrl: '',   // ← ضع رابط موقع فرع جدة من Google Maps (فارغ = يُخفى زر «موقعنا»)
 };
 
 const menuCategories = [
@@ -76,7 +84,7 @@ const menuCategories = [
         nameAr:        'دبل ترافل برجر',
         nameEn:        'Double Truffle Burger',
         image:         'images/products/truffle-burger.jpg',
-        price:         26,
+        price:         28,
         mealPrice:     36,
         descriptionAr: 'برجر اسماش دبل 140 غرام لعشاق النكهات العميقة والفريدة، يقدّم مزيجاً لا يُقاوم من المكونات الفاخرة',
         ingredients: [
@@ -104,10 +112,17 @@ const menuCategories = [
     icon: 'fa-bowl-food',
     items: [
       {
+        nameAr:        'بطاطس عادية',
+        nameEn:        'Regular Fries',
+        image:         'images/products/fries.jpg',
+        price:         7,
+        descriptionAr: 'بطاطس مقلية ذهبية',
+      },
+      {
         nameAr:        'بطاطس مبهّرة',
         nameEn:        'Seasoned Potatoes',
         image:         'images/products/fries.jpg',
-        price:         7,
+        price:         9,
         calories:      311,
         descriptionAr: 'بطاطس مقلية ذهبية ببهارات ديو',
       },
@@ -140,8 +155,8 @@ const menuCategories = [
         nameAr:        'مشروبات غازية',
         nameEn:        'Soft Drink',
         image:         '',
-        price:         3,
-        variants:      ['كولا', 'كولا دايت', 'كولا زيرو', 'سبرايت'],
+        price:         5,
+        variants:      ['كولا', 'كولا زيرو', 'سبرايت'],
       },
       {
         nameAr:        'مياه',
