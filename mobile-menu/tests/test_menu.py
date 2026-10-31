@@ -185,6 +185,7 @@ class MenuTests(unittest.TestCase):
         page.wait_for_timeout(1200)
         self.assertTrue(page.locator('#sec-info').is_visible())
         self.assertEqual(page.locator('.m-tab.active').get_attribute('data-cat'),'info')
+        self.assertEqual(page.locator('#sec-info a[href="./"]').count(),0)
 
 
 if __name__ == '__main__':
